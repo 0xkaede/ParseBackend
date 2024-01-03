@@ -11,8 +11,9 @@ namespace ParseBackend
         public static string DecodeBase64(this string txt) => Convert.FromBase64String(txt).FromBytes();
 
         public static string CreateUuid() => Guid.NewGuid().ToString().Replace("-", string.Empty);
+        public static string CurrentTime() => DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.sssZ");
 
-        public static string ComputeSHA256Hash(string input)
+        public static string ComputeSHA256Hash(this string input)
         {
             using (var sha256 = SHA256.Create())
             {
@@ -26,5 +27,7 @@ namespace ParseBackend
                 return sb.ToString();
             }
         }
+
+        public static readonly string JWT_SECRET = CreateUuid();
     }
 }

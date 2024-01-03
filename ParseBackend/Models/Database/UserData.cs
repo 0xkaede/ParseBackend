@@ -4,8 +4,8 @@ namespace ParseBackend.Models.Database
 {
     public class UserData : BaseDatabase
     {
-        [BsonElement("createDate")]
-        public string AccountId { get; set; }
+        [BsonElement("createdDate")]
+        public string Created { get; set; }
 
         [BsonElement("email")]
         public string Email { get; set; }
