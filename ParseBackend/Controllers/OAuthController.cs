@@ -26,7 +26,7 @@ namespace ParseBackend.Controllers
         [Route("token")]
         public async Task<ActionResult<OAuthResponse>> LoginToken()
         {
-            var accountData = new UserData();
+            UserData accountData = null;
             var form = Request.Form;
 
             var clientId = Request.Headers.Authorization.ToString().Split(' ')[1].DecodeBase64().Split(':');

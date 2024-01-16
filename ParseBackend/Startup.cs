@@ -2,6 +2,7 @@
 using ParseBackend.Exceptions.Common;
 using ParseBackend.Filters;
 using ParseBackend.Services;
+using ParseBackend.Utils;
 using System.Net;
 
 namespace ParseBackend
@@ -54,7 +55,7 @@ namespace ParseBackend
                     _ => json
                 };
 
-                //Logger.Log($"Cant find \"{context.HttpContext.Request.Path}\"", LogLevel.Error);
+                Logger.Log($"Cant find \"{context.HttpContext.Request.Path}\"", Utils.LogLevel.Error);
                 await context.HttpContext.Response.WriteAsync(json);
             });
 

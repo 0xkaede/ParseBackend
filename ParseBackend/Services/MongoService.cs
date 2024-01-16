@@ -1,5 +1,6 @@
 ﻿using Amazon.Runtime.Internal.Transform;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 using Newtonsoft.Json.Linq;
 using ParseBackend.Exceptions;
 using ParseBackend.Exceptions.Common;
@@ -10,6 +11,7 @@ using ParseBackend.Models.Profile;
 using ParseBackend.Models.Profile.Attributes;
 using ParseBackend.Models.Profile.Stats;
 using ParseBackend.Utils;
+using System.Diagnostics;
 using static ParseBackend.Global;
 
 namespace ParseBackend.Services
@@ -50,19 +52,23 @@ namespace ParseBackend.Services
             await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
         }
 
-        public async Task<List<UserData>> GetAllUserProfiles()
+        private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)
+            => Builders<AthenaData>.Filter.Eq(x => x.AccountId, accountId)
+            & Builders<AthenaData>.Filter.ElemMatch(x => x.Items, Builders<AthenaItemsData>.Filter.Eq(x => x.ItemId, templateId)); // so much better lad
+
+        private async Task<List<UserData>> GetAllUserProfiles()
         {
             var item = await _userProfiles.FindAsync(x => true);
             return item.ToList();
         }
 
-        public async Task<List<AthenaData>> GetAllUserAthenaProfiles()
+        private async Task<List<AthenaData>> GetAllUserAthenaProfiles()
         {
             var item = await _athenaData.FindAsync(x => true);
             return item.ToList();
         }
 
-        public async Task<List<CommonCoreData>> GetAllUserCommonCoreProfiles()
+        private async Task<List<CommonCoreData>> GetAllUserCommonCoreProfiles()
         {
             var item = await _commonCoreData.FindAsync(x => true);
             return item.ToList();
@@ -84,16 +90,6 @@ namespace ParseBackend.Services
         {
             var users = await GetAllUserCommonCoreProfiles();
             return users.FirstOrDefault(x => x.AccountId == accountId);
-        }
-
-        public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool blurr)
-        {
-            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId) 
-                & Builders<AthenaData>.Filter.ElemMatch(x => x.Items, Builders<AthenaItemsData>.Filter.Eq(x => x.ItemId, templateId)); // so much better lad
-
-            var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstOrDefault(x => x.ItemId == templateId).IsFavorite, blurr);
-
-            _athenaData.UpdateOneAsync(filter, update);
         }
 
         public async Task CreateAccount(string email, string password, string username)
@@ -189,13 +185,20 @@ namespace ParseBackend.Services
 
             foreach (var item in items)
             {
-                athenaData.Items.Add(new AthenaItemsData
+                try
                 {
-                    Amount = 1,
-                    Seen = false,
-                    IsFavorite = false,
-                    ItemId = item
-                });
+                    athenaData.Items.Add(new AthenaItemsData
+                    {
+                        Amount = 1,
+                        Seen = false,
+                        IsFavorite = false,
+                        ItemId = item
+                    });
+                }
+                catch
+                {
+
+                }
             }
 
             var commonCoreData = new CommonCoreData
@@ -257,6 +260,7 @@ namespace ParseBackend.Services
                 CommandRevision = athenaData.Rvn,
                 Updated = CurrentTime(),
                 Version = "no_version",
+                Items = new Dictionary<string, ProfileItem>(),
                 Stats = new ProfileStats
                 {
                     Attributes = JObject.FromObject(new AthenaStats
@@ -407,62 +411,88 @@ namespace ParseBackend.Services
 
         public async Task<Profile> CreateCommonCoreProfile(string accountId)
         {
-            var userData = await FindUserByAccountId(accountId);
-            var commonCoreData = await FindCommonCoreByAccountId(accountId);
-
-            var commonCore = new Profile
+            try
             {
-                Created = commonCoreData.Created,
-                AccountId = accountId,
-                ProfileId = "common_core",
-                Revision = commonCoreData.Rvn, //todo
-                WipeNumber = 0,
-                CommandRevision = commonCoreData.Rvn,
-                Updated = CurrentTime(),
-                Version = "no_version",
-                Stats = new ProfileStats
+                var userData = await FindUserByAccountId(accountId);
+                var commonCoreData = await FindCommonCoreByAccountId(accountId);
+
+                var commonCore = new Profile
                 {
-                    Attributes = JObject.FromObject(new CommonCoreStats
+                    Created = commonCoreData.Created,
+                    AccountId = accountId,
+                    ProfileId = "common_core",
+                    Revision = commonCoreData.Rvn, //todo
+                    WipeNumber = 0,
+                    CommandRevision = commonCoreData.Rvn,
+                    Updated = CurrentTime(),
+                    Version = "no_version",
+                    Items = new Dictionary<string, ProfileItem>(),
+                    Stats = new ProfileStats
                     {
-                        MtxPurchaseHistory = new MtxPurchaseHistory
+                        Attributes = JObject.FromObject(new CommonCoreStats
                         {
-                            RefundsUsed = 0,
-                            RefundCredits = 3,
-                            Purchases = new List<MtxPurchase>()
-                        },
-                        MfaEnabled = true,
-                        MtxAffiliate = "",
-                        CurrentMtxPlatform = "EpicPC",
-                        AllowedToReceiveGifts = true,
-                        AllowedToSendGifts = true,
-                        GiftHistory = new GiftHistory(),
-                        BanStatus = new BanStatus
-                        {
-                            RequiresUserAck = userData.BannedData.Type is Enums.BannedType.MatchMaking ? true : false,
-                            BanReasons = new List<string> { userData.BannedData.Reason.GetDescription() },
-                            BanHasStarted = userData.BannedData.Type is Enums.BannedType.MatchMaking ? true : false,
-                            BanStartTime = userData.BannedData.DateBanned,
-                            BanDurationDays = userData.BannedData.Days,
-                            AdditionalInfo = "",
-                            CompetitiveBanReason = "None",
-                            ExploitProgramName = ""
-                        }
-                    })
-                }
-            };
+                            MtxPurchaseHistory = new MtxPurchaseHistory
+                            {
+                                RefundsUsed = 0,
+                                RefundCredits = 3,
+                                Purchases = new List<MtxPurchase>()
+                            },
+                            MfaEnabled = true,
+                            MtxAffiliate = "",
+                            CurrentMtxPlatform = "EpicPC",
+                            AllowedToReceiveGifts = true,
+                            AllowedToSendGifts = true,
+                            GiftHistory = new GiftHistory(),
+                            BanStatus = new BanStatus
+                            {
+                                RequiresUserAck = userData.BannedData.Type is Enums.BannedType.MatchMaking ? true : false,
+                                BanReasons = new List<string> { userData.BannedData.Reason.GetDescription() },
+                                BanHasStarted = userData.BannedData.Type is Enums.BannedType.MatchMaking ? true : false,
+                                BanStartTime = userData.BannedData.DateBanned,
+                                BanDurationDays = userData.BannedData.Days,
+                                AdditionalInfo = "",
+                                CompetitiveBanReason = "None",
+                                ExploitProgramName = ""
+                            }
+                        })
+                    }
+                };
 
-            commonCore.Items.Add("Currency:MtxPurchased".ComputeSHA256Hash(), new ProfileItem
-            {
-                Attributes = JObject.FromObject(new CurrencyAttributes
+                commonCore.Items.Add("Currency:MtxPurchased".ComputeSHA256Hash(), new ProfileItem
                 {
-                    Platform = "EpicPC"
-                }),
-                Quantity = commonCoreData.Vbucks,
-                TemplateId = "Currency:MtxPurchased"
-            });
+                    Attributes = JObject.FromObject(new CurrencyAttributes
+                    {
+                        Platform = "EpicPC"
+                    }),
+                    Quantity = commonCoreData.Vbucks,
+                    TemplateId = "Currency:MtxPurchased"
+                });
 
-            return commonCore;
+                return commonCore;
+            }
+            catch(Exception ex)
+            {
+                Logger.Log(ex.ToString());
+            }
+            return null;
         }
 
+        public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool isFavorite)
+        {
+            var filter = FilterAthenaItem(athenaData.AccountId, templateId);
+
+            var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().IsFavorite, isFavorite);
+
+            _athenaData.UpdateOne(filter, update);
+        }
+
+        public void SeenAthenaItem(ref AthenaData athenaData, string templateId, bool isSeen)
+        {
+            var filter = FilterAthenaItem(athenaData.AccountId, templateId);
+
+            var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().Seen, isSeen);
+
+            _athenaData.UpdateOne(filter, update);
+        }
     }
 }

@@ -3,6 +3,7 @@ using ParseBackend.Models.Database.Athena;
 
 namespace ParseBackend.Models.Database.CommonCore
 {
+    [BsonIgnoreExtraElements]
     public class CommonCoreData : BaseDatabase
     {
         [BsonElement("vbucks")]

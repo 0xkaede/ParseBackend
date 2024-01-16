@@ -18,19 +18,20 @@ namespace ParseBackend.Controllers
             _mongoService = mongoService;
             _userService = userService;
 
-            ContextUtils.VerifyToken(HttpContext); //Middle
+            //ContextUtils.VerifyToken(HttpContext); //Middle
         }
 
         [HttpPost]
-        [Route("{accountId}/client/{action}")]
-        public async Task<ActionResult<ProfileResponse>> McpPost([FromQuery] string profileId, [FromQuery] int rvn, string accountId, string action)
+        [Route("{accountId}/client/{oparation}")]
+        public async Task<ActionResult<ProfileResponse>> McpPost([FromQuery] string profileId, [FromQuery] int rvn, string accountId, string oparation)
         {
-            var response = action.ToLower() switch
+            Logger.Log(oparation);
+            var response = oparation.ToLower() switch
             {
                 "queryprofile" => await _userService.QueryProfile(profileId, accountId),
                 "setmtxplatform" => await _userService.QueryProfile(profileId, accountId),
                 "bulkequipbattleroyalecustomization" => await _userService.QueryProfile(profileId, accountId),
-                _ => throw new BaseException("", $"The action \"{action}\" was not found!", 1142, "MCP.Epic.Error")
+                _ => throw new BaseException("", $"The action \"{oparation}\" was not found!", 1142, "MCP.Epic.Error")
             };
             
             return response;
