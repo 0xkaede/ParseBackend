@@ -1,15 +1,10 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 
-namespace ParseBackend.Models.Database
+namespace ParseBackend.Models.Database.Athena
 {
+    [BsonIgnoreExtraElements]
     public class AthenaData : BaseDatabase
     {
-        [BsonElement("createdDate")]
-        public string Created { get; set; }
-
-        [BsonElement("rvn")]
-        public int Rvn { get; set; }
-
         [BsonElement("items")]
         public List<AthenaItemsData> Items { get; set; }
 
@@ -19,7 +14,7 @@ namespace ParseBackend.Models.Database
         [BsonElement("currentLoadOutsList")]
         public List<string> CurrentLoadOutsList { get; set; }
 
-        [BsonElement("stats")] 
+        [BsonElement("stats")]
         public AthenaStatsData Stats { get; set; }
     }
 

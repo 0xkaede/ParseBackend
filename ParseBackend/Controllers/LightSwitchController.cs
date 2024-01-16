@@ -32,7 +32,7 @@ namespace ParseBackend.Controllers
                 MaintenanceUri = null,
                 OverrideCatalogIds = new List<string> { "a7f138b2e51945ffbfdacc1af0541053" },
                 AllowedActions = new List<string>(),
-                Banned = user.BannedData.IsBanned,
+                Banned = user.BannedData.Type is Enums.BannedType.Perm or Enums.BannedType.Hwid ? true : false, //ig
                 LauncherInfoDTO = new LauncherInfoDTO
                 {
                     AppName = "Fortnite",
@@ -44,27 +44,30 @@ namespace ParseBackend.Controllers
 
         [HttpGet]
         [Route("bulk/status")]
-        public async Task<ActionResult<FortniteStatusResponse>> BulkStatus()
+        public async Task<ActionResult<List<FortniteStatusResponse>>> BulkStatus()
         {
             var token = ContextUtils.VerifyToken(HttpContext); // this say user will have a message saying "You have been banned from fortnite"
 
             var user = await _mongoService.FindUserByAccountId(token.Iai);
 
-            return new FortniteStatusResponse
+            return new List<FortniteStatusResponse>()
             {
-                ServiceInstanceId = "fortnite",
-                Status = "UP",
-                Message = "fortniteisup",
-                MaintenanceUri = null,
-                OverrideCatalogIds = new List<string> { "a7f138b2e51945ffbfdacc1af0541053" },
-                AllowedActions = new List<string> { "PLAY", "DOWNLOAD" },
-                Banned = user.BannedData.IsBanned,
-                LauncherInfoDTO = new LauncherInfoDTO
+                new FortniteStatusResponse
                 {
-                    AppName = "Fortnite",
-                    CatalogItemId = "4fe75bbc5a674f4f9b356b5c90567da5",
-                    Namespace = "fn"
-                }
+                    ServiceInstanceId = "fortnite",
+                    Status = "UP",
+                    Message = "fortniteisup",
+                    MaintenanceUri = null,
+                    OverrideCatalogIds = new List<string> { "a7f138b2e51945ffbfdacc1af0541053" },
+                    AllowedActions = new List<string> { "PLAY", "DOWNLOAD" },
+                    Banned = user.BannedData.Type is Enums.BannedType.Perm or Enums.BannedType.Hwid ? true : false,
+                    LauncherInfoDTO = new LauncherInfoDTO
+                    {
+                        AppName = "Fortnite",
+                        CatalogItemId = "4fe75bbc5a674f4f9b356b5c90567da5",
+                        Namespace = "fn"
+                    }
+                },
             };
         }
     }

@@ -1,12 +1,11 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
+using ParseBackend.Enums;
 
 namespace ParseBackend.Models.Database
 {
+    [BsonIgnoreExtraElements]
     public class UserData : BaseDatabase
     {
-        [BsonElement("createdDate")]
-        public string Created { get; set; }
-
         [BsonElement("email")]
         public string Email { get; set; }
 
@@ -25,10 +24,16 @@ namespace ParseBackend.Models.Database
         [BsonElement("isBanned")]
         public bool IsBanned { get; set; }
 
-        [BsonElement("hours")]
-        public int Hours { get; set; }
+        [BsonElement("days")]
+        public float Days { get; set; }
+
+        [BsonElement("dateBanned")]
+        public string DateBanned { get; set; }
 
         [BsonElement("reason")]
-        public string Reason { get; set; }
+        public BannedReason Reason { get; set; }
+
+        [BsonElement("type")]
+        public BannedType Type { get; set; }
     }
 }

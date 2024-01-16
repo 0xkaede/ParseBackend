@@ -57,6 +57,9 @@ namespace ParseBackend.Controllers
                     }
             }
 
+            if(accountData is null)
+                throw new InvalidCredentialsException();
+
             if (accountData.BannedData.IsBanned)
                 throw new InvalidCredentialsException();
 

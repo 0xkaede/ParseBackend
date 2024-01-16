@@ -1,7 +1,7 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
-using ParseBackend.Models.Profiles;
+using ParseBackend.Models.Profile.Attributes;
 
-namespace ParseBackend.Models.Database
+namespace ParseBackend.Models.Database.Athena
 {
     public class AthenaItemsData
     {

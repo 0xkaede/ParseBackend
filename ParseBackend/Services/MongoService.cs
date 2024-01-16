@@ -4,7 +4,11 @@ using Newtonsoft.Json.Linq;
 using ParseBackend.Exceptions;
 using ParseBackend.Exceptions.Common;
 using ParseBackend.Models.Database;
-using ParseBackend.Models.Profiles;
+using ParseBackend.Models.Database.Athena;
+using ParseBackend.Models.Database.CommonCore;
+using ParseBackend.Models.Profile;
+using ParseBackend.Models.Profile.Attributes;
+using ParseBackend.Models.Profile.Stats;
 using ParseBackend.Utils;
 using static ParseBackend.Global;
 
@@ -15,12 +19,17 @@ namespace ParseBackend.Services
         public Task<UserData> LoginAccount(string email, string password);
 
         public Task<UserData> FindUserByAccountId(string accountId);
+
+        public Task<Profile> CreateAthenaProfile(string accountId);
+        public Task<Profile> CreateCommonCoreProfile(string accountId);
+        public Task<Profile> CreateCommonPublicProfile(string accountId);
     }
 
     public class MongoService : IMongoService
     {
         private readonly IMongoCollection<UserData> _userProfiles;
         private readonly IMongoCollection<AthenaData> _athenaData;
+        private readonly IMongoCollection<CommonCoreData> _commonCoreData;
 
         public MongoService()
         {
@@ -30,6 +39,7 @@ namespace ParseBackend.Services
 
             _userProfiles = mongoDatabase.GetCollection<UserData>("UserProfiles");
             _athenaData = mongoDatabase.GetCollection<AthenaData>("AthenaData");
+            _commonCoreData = mongoDatabase.GetCollection<CommonCoreData>("CommonCoreData");
 
             _ = InitDatabase();
         }
@@ -52,6 +62,12 @@ namespace ParseBackend.Services
             return item.ToList();
         }
 
+        public async Task<List<CommonCoreData>> GetAllUserCommonCoreProfiles()
+        {
+            var item = await _commonCoreData.FindAsync(x => true);
+            return item.ToList();
+        }
+
         public async Task<UserData> FindUserByAccountId(string accountId)
         {
             var users = await GetAllUserProfiles();
@@ -62,6 +78,22 @@ namespace ParseBackend.Services
         {
             var users = await GetAllUserAthenaProfiles();
             return users.FirstOrDefault(x => x.AccountId == accountId);
+        }
+
+        public async Task<CommonCoreData> FindCommonCoreByAccountId(string accountId)
+        {
+            var users = await GetAllUserCommonCoreProfiles();
+            return users.FirstOrDefault(x => x.AccountId == accountId);
+        }
+
+        public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool blurr)
+        {
+            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId) 
+                & Builders<AthenaData>.Filter.ElemMatch(x => x.Items, Builders<AthenaItemsData>.Filter.Eq(x => x.ItemId, templateId)); // so much better lad
+
+            var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstOrDefault(x => x.ItemId == templateId).IsFavorite, blurr);
+
+            _athenaData.UpdateOneAsync(filter, update);
         }
 
         public async Task CreateAccount(string email, string password, string username)
@@ -89,8 +121,10 @@ namespace ParseBackend.Services
                 BannedData = new BanData
                 {
                     IsBanned = false,
-                    Hours = 0,
-                    Reason = null
+                    Type = Enums.BannedType.None,
+                    Reason = Enums.BannedReason.Exploiting,
+                    Days = 0,
+                    DateBanned = CurrentTime()
                 }
             };
 
@@ -164,7 +198,18 @@ namespace ParseBackend.Services
                 });
             }
 
+            var commonCoreData = new CommonCoreData
+            {
+                AccountId = id,
+                Created = time,
+                Gifts = new List<CommonCoreItems>(),
+                Items = new List<CommonCoreItems>(),
+                Rvn = 0,
+                Vbucks = 0
+            };
+
             await _athenaData.InsertOneAsync(athenaData);
+            await _commonCoreData.InsertOneAsync(commonCoreData);
             await _userProfiles.InsertOneAsync(userData);
 
             Logger.Log($"Account Created: {username}");
@@ -187,25 +232,24 @@ namespace ParseBackend.Services
         public async Task<UserData> LoginAccount(string email, string password)
         {
             var users = await GetAllUserProfiles();
-
-            var emailCheck = users.FirstOrDefault(x => x.Email.Equals(email));
+            Logger.Log("test1");
+            var emailCheck = users.FirstOrDefault(x => x.Email == email);
             if (email is null)
                 throw new BaseException("", "Email wasnt found", 1008, "");
-
+            Logger.Log("test2");
             if (emailCheck.Password != password.ComputeSHA256Hash())
                 throw new BaseException("", "Password is wrong, Please try again!", 1008, "");
-
+            Logger.Log("test4");
             return emailCheck;
         }
 
-        public async Task<AthenaProfile> CreateAthenaProfile(string accountId)
+        public async Task<Profile> CreateAthenaProfile(string accountId)
         {
-            var user = await FindUserByAccountId(accountId);
             var athenaData = await FindAthenaByAccountId(accountId);
 
-            var athena = new AthenaProfile
+            var athena = new Profile
             {
-                Created = user.Created,
+                Created = athenaData.Created,
                 AccountId = accountId,
                 ProfileId = "athena",
                 Revision = athenaData.Rvn, //todo
@@ -213,9 +257,9 @@ namespace ParseBackend.Services
                 CommandRevision = athenaData.Rvn,
                 Updated = CurrentTime(),
                 Version = "no_version",
-                Stats = new AthenaStats
+                Stats = new ProfileStats
                 {
-                    Attributes = new AthenaAtrributes
+                    Attributes = JObject.FromObject(new AthenaStats
                     {
                         AccountLevel = athenaData.Stats.AccountLevel,
                         Level = athenaData.Stats.Level,
@@ -233,9 +277,11 @@ namespace ParseBackend.Services
                         BookXp = athenaData.Stats.BattlePassStars,
                         SeasonMatchBoost = athenaData.Stats.BattleBoost,
                         SeasonFriendMatchBoost = athenaData.Stats.BattleBoostFriend,
-                    }
+                    })
                 }
             };
+
+            //add full locker like elixir
 
             foreach(var item in athenaData.Items)
             {
@@ -339,6 +385,84 @@ namespace ParseBackend.Services
 
             return athena;
         }
-        
+
+        public async Task<Profile> CreateCommonPublicProfile(string accountId)
+        {
+            var commonPublic = new Profile
+            {
+                Created = CurrentTime(),
+                AccountId = accountId,
+                ProfileId = "common_public",
+                Revision = 0, 
+                WipeNumber = 0,
+                CommandRevision = 0,
+                Updated = CurrentTime(),
+                Version = "no_version",
+                Stats = new ProfileStats(),
+                Items = new Dictionary<string, ProfileItem>(),
+            };
+
+            return commonPublic;
+        }
+
+        public async Task<Profile> CreateCommonCoreProfile(string accountId)
+        {
+            var userData = await FindUserByAccountId(accountId);
+            var commonCoreData = await FindCommonCoreByAccountId(accountId);
+
+            var commonCore = new Profile
+            {
+                Created = commonCoreData.Created,
+                AccountId = accountId,
+                ProfileId = "common_core",
+                Revision = commonCoreData.Rvn, //todo
+                WipeNumber = 0,
+                CommandRevision = commonCoreData.Rvn,
+                Updated = CurrentTime(),
+                Version = "no_version",
+                Stats = new ProfileStats
+                {
+                    Attributes = JObject.FromObject(new CommonCoreStats
+                    {
+                        MtxPurchaseHistory = new MtxPurchaseHistory
+                        {
+                            RefundsUsed = 0,
+                            RefundCredits = 3,
+                            Purchases = new List<MtxPurchase>()
+                        },
+                        MfaEnabled = true,
+                        MtxAffiliate = "",
+                        CurrentMtxPlatform = "EpicPC",
+                        AllowedToReceiveGifts = true,
+                        AllowedToSendGifts = true,
+                        GiftHistory = new GiftHistory(),
+                        BanStatus = new BanStatus
+                        {
+                            RequiresUserAck = userData.BannedData.Type is Enums.BannedType.MatchMaking ? true : false,
+                            BanReasons = new List<string> { userData.BannedData.Reason.GetDescription() },
+                            BanHasStarted = userData.BannedData.Type is Enums.BannedType.MatchMaking ? true : false,
+                            BanStartTime = userData.BannedData.DateBanned,
+                            BanDurationDays = userData.BannedData.Days,
+                            AdditionalInfo = "",
+                            CompetitiveBanReason = "None",
+                            ExploitProgramName = ""
+                        }
+                    })
+                }
+            };
+
+            commonCore.Items.Add("Currency:MtxPurchased".ComputeSHA256Hash(), new ProfileItem
+            {
+                Attributes = JObject.FromObject(new CurrencyAttributes
+                {
+                    Platform = "EpicPC"
+                }),
+                Quantity = commonCoreData.Vbucks,
+                TemplateId = "Currency:MtxPurchased"
+            });
+
+            return commonCore;
+        }
+
     }
 }
