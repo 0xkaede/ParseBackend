@@ -1,8 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ParseBackend.Exceptions;
 using ParseBackend.Models.Response;
 using ParseBackend.Services;
 using ParseBackend.Utils;
+using System.Text;
 
 namespace ParseBackend.Controllers
 {
@@ -26,13 +29,22 @@ namespace ParseBackend.Controllers
         public async Task<ActionResult<ProfileResponse>> McpPost([FromQuery] string profileId, [FromQuery] int rvn, string accountId, string oparation)
         {
             Logger.Log(oparation);
+
+            var body = string.Empty;
+            using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
+                body = await reader.ReadToEndAsync();
+
+            var bodyConverted = JsonConvert.DeserializeObject<JObject>(body);
+
             var response = oparation.ToLower() switch
             {
                 "queryprofile" => await _userService.QueryProfile(profileId, accountId),
                 "setmtxplatform" => await _userService.QueryProfile(profileId, accountId),
                 "bulkequipbattleroyalecustomization" => await _userService.QueryProfile(profileId, accountId),
+                "equipbattleroyalecustomization" => await _userService.EquipBattleRoyaleCustomization(accountId, bodyConverted),
+                "markitemseen" => await _userService.MarkItemSeen(accountId, bodyConverted),
                 _ => throw new BaseException("", $"The action \"{oparation}\" was not found!", 1142, "MCP.Epic.Error")
-            };
+            }; ;
             
             return response;
         }

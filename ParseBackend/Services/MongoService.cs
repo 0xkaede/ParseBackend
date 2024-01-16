@@ -1,4 +1,5 @@
 ﻿using Amazon.Runtime.Internal.Transform;
+using Microsoft.AspNetCore.JsonPatch.Operations;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Newtonsoft.Json.Linq;
@@ -21,10 +22,14 @@ namespace ParseBackend.Services
         public Task<UserData> LoginAccount(string email, string password);
 
         public Task<UserData> FindUserByAccountId(string accountId);
+        public Task<AthenaData> FindAthenaByAccountId(string accountId);
 
         public Task<Profile> CreateAthenaProfile(string accountId);
         public Task<Profile> CreateCommonCoreProfile(string accountId);
         public Task<Profile> CreateCommonPublicProfile(string accountId);
+
+        public void SeenAthenaItem(ref AthenaData athenaData, string templateId, bool isSeen);
+        public void EquipAthenaItem(ref AthenaData athenaData, string itemType, string itemId);
     }
 
     public class MongoService : IMongoService
@@ -477,21 +482,42 @@ namespace ParseBackend.Services
             return null;
         }
 
-        public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool isFavorite)
-        {
-            var filter = FilterAthenaItem(athenaData.AccountId, templateId);
-
-            var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().IsFavorite, isFavorite);
-
-            _athenaData.UpdateOne(filter, update);
-        }
-
         public void SeenAthenaItem(ref AthenaData athenaData, string templateId, bool isSeen)
         {
             var filter = FilterAthenaItem(athenaData.AccountId, templateId);
 
             var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().Seen, isSeen);
 
+            UpdateAthena(ref athenaData, filter, update);
+        }
+
+        public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool isFavorite)
+        {
+            var filter = FilterAthenaItem(athenaData.AccountId, templateId);
+
+            var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().IsFavorite, isFavorite);
+
+            UpdateAthena(ref athenaData, filter, update);
+        }
+
+        public void EquipAthenaItem(ref AthenaData athenaData, string itemType, string itemId)
+        {
+            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
+
+            var update = itemType switch
+            {
+                "Character" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentSkin, itemId),
+                _ => throw new BaseException("", $"The item type \"{itemType}\" was not found!", 1142, "")
+            };
+
+            UpdateAthena(ref athenaData, filter, update);
+        }
+
+        private void UpdateAthena(ref AthenaData athenaData, FilterDefinition<AthenaData> filter, UpdateDefinition<AthenaData> update)
+        {
+            var filterRvn = Builders<AthenaData>.Update.Set(x => x.Rvn, athenaData.Rvn + 1);
+
+            _athenaData.UpdateOne(filter, filterRvn);
             _athenaData.UpdateOne(filter, update);
         }
     }
