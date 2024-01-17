@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ParseBackend.Exceptions;
+using ParseBackend.Models.Request;
 using ParseBackend.Models.Response;
 using ParseBackend.Services;
 using ParseBackend.Utils;
@@ -34,15 +35,15 @@ namespace ParseBackend.Controllers
             using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
                 body = await reader.ReadToEndAsync();
 
-            var bodyConverted = JsonConvert.DeserializeObject<JObject>(body);
 
             var response = oparation.ToLower() switch
             {
                 "queryprofile" => await _userService.QueryProfile(profileId, accountId),
                 "setmtxplatform" => await _userService.QueryProfile(profileId, accountId),
                 "bulkequipbattleroyalecustomization" => await _userService.QueryProfile(profileId, accountId),
-                "equipbattleroyalecustomization" => await _userService.EquipBattleRoyaleCustomization(accountId, bodyConverted),
-                "markitemseen" => await _userService.MarkItemSeen(accountId, bodyConverted),
+                "equipbattleroyalecustomization" => await _userService.EquipBattleRoyaleCustomization(accountId, JsonConvert.DeserializeObject<EquipBattleRoyaleCustomizationRequest>(body)!),
+                "markitemseen" => await _userService.MarkItemSeen(accountId, JsonConvert.DeserializeObject<MarkItemSeenRequest>(body)!),
+                "SetItemFavoriteStatusBatch" => await _userService.SetItemFavoriteStatusBatch(accountId, JsonConvert.DeserializeObject<SetItemFavoriteStatusBatchRequest>(body)!),
                 _ => throw new BaseException("", $"The action \"{oparation}\" was not found!", 1142, "MCP.Epic.Error")
             }; ;
             

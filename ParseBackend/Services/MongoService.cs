@@ -1,5 +1,6 @@
 ﻿using Amazon.Runtime.Internal.Transform;
 using Microsoft.AspNetCore.JsonPatch.Operations;
+using Microsoft.VisualBasic;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Newtonsoft.Json.Linq;
@@ -30,6 +31,9 @@ namespace ParseBackend.Services
 
         public void SeenAthenaItem(ref AthenaData athenaData, string templateId, bool isSeen);
         public void EquipAthenaItem(ref AthenaData athenaData, string itemType, string itemId);
+        public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool isFavorite);
+
+        public void UpdateAthenaRvn(ref AthenaData athenaData);
     }
 
     public class MongoService : IMongoService
@@ -497,7 +501,7 @@ namespace ParseBackend.Services
 
             var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().IsFavorite, isFavorite);
 
-            UpdateAthena(ref athenaData, filter, update);
+            _athenaData.UpdateOne(filter, update);
         }
 
         public void EquipAthenaItem(ref AthenaData athenaData, string itemType, string itemId)
@@ -518,6 +522,14 @@ namespace ParseBackend.Services
             var filterRvn = Builders<AthenaData>.Update.Set(x => x.Rvn, athenaData.Rvn + 1);
 
             _athenaData.UpdateOne(filter, filterRvn);
+            _athenaData.UpdateOne(filter, update);
+        }
+
+        public void UpdateAthenaRvn(ref AthenaData athenaData)
+        {
+            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
+            var update = Builders<AthenaData>.Update.Set(x => x.Rvn, athenaData.Rvn + 1);
+
             _athenaData.UpdateOne(filter, update);
         }
     }

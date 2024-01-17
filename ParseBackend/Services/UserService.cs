@@ -14,8 +14,9 @@ namespace ParseBackend.Services
     public interface IUserService
     {
         public Task<ProfileResponse> QueryProfile(string type, string accountId);
-        public Task<ProfileResponse> EquipBattleRoyaleCustomization(string accountId, JObject request);
-        public Task<ProfileResponse> MarkItemSeen(string accountId, JObject request);
+        public Task<ProfileResponse> EquipBattleRoyaleCustomization(string accountId, EquipBattleRoyaleCustomizationRequest body);
+        public Task<ProfileResponse> MarkItemSeen(string accountId, MarkItemSeenRequest body);
+        public Task<ProfileResponse> SetItemFavoriteStatusBatch(string accountId, SetItemFavoriteStatusBatchRequest body);
     }
 
     public class UserService : IUserService
@@ -71,10 +72,8 @@ namespace ParseBackend.Services
             return await CreateProfileResponse(profile, profileChanges);
         }
 
-        public async Task<ProfileResponse> EquipBattleRoyaleCustomization(string accountId, JObject request)
+        public async Task<ProfileResponse> EquipBattleRoyaleCustomization(string accountId, EquipBattleRoyaleCustomizationRequest body)
         {
-            var body = request.ToObject<EquipBattleRoyaleCustomizationRequest>();
-
             var athenaData = await _mongoService.FindAthenaByAccountId(accountId);
 
             _mongoService.EquipAthenaItem(ref athenaData, body.SlotName, body.ItemToSlot);
@@ -90,10 +89,8 @@ namespace ParseBackend.Services
             return await CreateProfileResponse(athenaData, profileChanges);
         }
 
-        public async Task<ProfileResponse> MarkItemSeen(string accountId, JObject request)
+        public async Task<ProfileResponse> MarkItemSeen(string accountId, MarkItemSeenRequest body)
         {
-            var body = request.ToObject<MarkItemSeenRequest>();
-
             var athenaData = await _mongoService.FindAthenaByAccountId(accountId);
 
             var profileChanges = new List<object>();
@@ -107,6 +104,29 @@ namespace ParseBackend.Services
                     ItemId = item,
                     AttributeName = "item_seen",
                     AttributeValue = true
+                });
+            }
+
+            _mongoService.UpdateAthenaRvn(ref athenaData);
+
+            return await CreateProfileResponse(athenaData, profileChanges);
+        }
+
+        public async Task<ProfileResponse> SetItemFavoriteStatusBatch(string accountId, SetItemFavoriteStatusBatchRequest body)
+        {
+            var athenaData = await _mongoService.FindAthenaByAccountId(accountId);
+
+            var profileChanges = new List<object>();
+
+            for (var i = 0; i < body.ItemIds.Count(); i++)
+            {
+                _mongoService.FavoriteAthenaItem(ref athenaData, body.ItemIds[i], body.ItemFavStatus[i]);
+
+                profileChanges.Add(new ItemAttrChanged
+                {
+                    ItemId = body.ItemIds[i],
+                    AttributeName = "favorite",
+                    AttributeValue = body.ItemFavStatus[i]
                 });
             }
 
