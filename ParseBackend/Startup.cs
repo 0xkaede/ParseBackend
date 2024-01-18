@@ -25,6 +25,7 @@ namespace ParseBackend
                 options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
             });
 
+            services.AddSingleton<IFileProviderService, FileProviderService>();
             services.AddSingleton<IMongoService, MongoService>();
             services.AddSingleton<IUserService, UserService>();
             //services.AddSingleton<IXmppService, XmppService>();

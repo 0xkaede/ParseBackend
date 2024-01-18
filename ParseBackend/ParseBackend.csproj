@@ -14,4 +14,9 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\FortniteEmoteExporter\CUE4Parse-master\CUE4Parse-Conversion\CUE4Parse-Conversion.csproj" />
+    <ProjectReference Include="..\..\FortniteEmoteExporter\CUE4Parse-master\CUE4Parse\CUE4Parse.csproj" />
+  </ItemGroup>
+
 </Project>

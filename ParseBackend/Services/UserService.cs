@@ -23,10 +23,12 @@ namespace ParseBackend.Services
     public class UserService : IUserService
     {
         private readonly IMongoService _mongoService;
+        private readonly IFileProviderService _fileProviderService;
 
-        public UserService(IMongoService mongoService)
+        public UserService(IMongoService mongoService, IFileProviderService fileProviderService)
         {
             _mongoService = mongoService;
+            _fileProviderService = fileProviderService;
         }
 
         public ProfileResponse CreateProfileResponse(ref Profile profile, List<object> profileChanges = null)

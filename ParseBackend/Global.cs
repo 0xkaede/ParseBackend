@@ -1,4 +1,6 @@
-﻿using ParseBackend.Models.Other;
+﻿using CUE4Parse.UE4.Versions;
+using ParseBackend.Enums;
+using ParseBackend.Models.Other;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -8,7 +10,8 @@ namespace ParseBackend
     {
         public static readonly Configuration Config = new Configuration
         {
-            FortniteVersions = Enums.FortniteVersions.Version_11_31
+            GamePath = "C:\\Users\\jmass\\Desktop\\Fortnite 11.31\\FortniteGame\\Content\\Paks",
+            FortniteVersions = FortniteVersions.Version_11_31
         };
 
         public static string FromBytes(this byte[] bytes) => Encoding.UTF8.GetString(bytes);

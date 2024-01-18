@@ -7,7 +7,7 @@ namespace ParseBackend.Utils
 {
     public static class TokenCreate
     {
-        public static string CreateAccess(UserData user, string clientId, string grant_type, string deviceId, int expiresIn)
+        public static string CreateAccess(ref UserData user, string clientId, string grant_type, string deviceId, int expiresIn)
         {
             var td = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.sssZ");
             var token = JWT.Encode(new AccessToken
@@ -29,10 +29,6 @@ namespace ParseBackend.Utils
                 CreationDate = td,
                 HoursExpire = expiresIn,
             }, JWT_SECRET, JwsAlgorithm.none);
-
-            //var enc = JWT.Encode(token, Utils.JWT_SECRET, JwsAlgorithm.none);
-            //var dec = JWT.Decode(enc);
-            //Console.WriteLine(dec);
 
             TokensUtils.AccessTokens.Add(new AccessTokensGlobal { AccessToken = "eg1~" + token, AccountId = user.AccountId });
 

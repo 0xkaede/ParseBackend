@@ -39,12 +39,15 @@ namespace ParseBackend.Services
 
     public class MongoService : IMongoService
     {
+        private readonly IFileProviderService _fileProviderService;
         private readonly IMongoCollection<UserData> _userProfiles;
         private readonly IMongoCollection<AthenaData> _athenaData;
         private readonly IMongoCollection<CommonCoreData> _commonCoreData;
 
-        public MongoService()
+        public MongoService(IFileProviderService fileProviderService)
         {
+            _fileProviderService = fileProviderService;
+
             var client = new MongoClient("mongodb://localhost");
 
             var mongoDatabase = client.GetDatabase("KaedeBackend");

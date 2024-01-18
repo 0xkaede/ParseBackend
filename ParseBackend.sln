@@ -3,7 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.7.34221.43
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParseBackend", "ParseBackend\ParseBackend.csproj", "{3C3E1331-BBAE-4592-BE4B-537900F4A095}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ParseBackend", "ParseBackend\ParseBackend.csproj", "{3C3E1331-BBAE-4592-BE4B-537900F4A095}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CUE4Parse", "..\FortniteEmoteExporter\CUE4Parse-master\CUE4Parse\CUE4Parse.csproj", "{B5321544-1A37-4CD0-BB2B-CA51A290B5CA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CUE4Parse-Conversion", "..\FortniteEmoteExporter\CUE4Parse-master\CUE4Parse-Conversion\CUE4Parse-Conversion.csproj", "{809C524C-CB9F-4C47-8BED-48DC1659BCBA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{3C3E1331-BBAE-4592-BE4B-537900F4A095}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3C3E1331-BBAE-4592-BE4B-537900F4A095}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3C3E1331-BBAE-4592-BE4B-537900F4A095}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5321544-1A37-4CD0-BB2B-CA51A290B5CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5321544-1A37-4CD0-BB2B-CA51A290B5CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5321544-1A37-4CD0-BB2B-CA51A290B5CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5321544-1A37-4CD0-BB2B-CA51A290B5CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{809C524C-CB9F-4C47-8BED-48DC1659BCBA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{809C524C-CB9F-4C47-8BED-48DC1659BCBA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{809C524C-CB9F-4C47-8BED-48DC1659BCBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{809C524C-CB9F-4C47-8BED-48DC1659BCBA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
