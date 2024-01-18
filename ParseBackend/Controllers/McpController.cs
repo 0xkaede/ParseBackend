@@ -43,7 +43,7 @@ namespace ParseBackend.Controllers
                 "bulkequipbattleroyalecustomization" => await _userService.QueryProfile(profileId, accountId),
                 "equipbattleroyalecustomization" => await _userService.EquipBattleRoyaleCustomization(accountId, JsonConvert.DeserializeObject<EquipBattleRoyaleCustomizationRequest>(body)!),
                 "markitemseen" => await _userService.MarkItemSeen(accountId, JsonConvert.DeserializeObject<MarkItemSeenRequest>(body)!),
-                "SetItemFavoriteStatusBatch" => await _userService.SetItemFavoriteStatusBatch(accountId, JsonConvert.DeserializeObject<SetItemFavoriteStatusBatchRequest>(body)!),
+                "setitemfavoritestatusbatch" => await _userService.SetItemFavoriteStatusBatch(accountId, JsonConvert.DeserializeObject<SetItemFavoriteStatusBatchRequest>(body)!),
                 _ => throw new BaseException("", $"The action \"{oparation}\" was not found!", 1142, "MCP.Epic.Error")
             }; ;
             

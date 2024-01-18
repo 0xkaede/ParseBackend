@@ -8,6 +8,9 @@ namespace ParseBackend.Models.Database.Athena
         [BsonElement("itemId")]
         public string ItemId { get; set; }
 
+        [BsonElement("itemIdResponse")]
+        public string ItemIdResponse { get; set; }
+
         [BsonElement("variant")]
         public List<Variant> Variants { get; set; }
 

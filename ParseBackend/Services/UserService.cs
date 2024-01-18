@@ -7,6 +7,7 @@ using ParseBackend.Models.Profile.Changes;
 using ParseBackend.Models.Request;
 using ParseBackend.Models.Response;
 using ParseBackend.Utils;
+using System;
 using System.Security.Authentication;
 
 namespace ParseBackend.Services
@@ -28,7 +29,7 @@ namespace ParseBackend.Services
             _mongoService = mongoService;
         }
 
-        public async Task<ProfileResponse> CreateProfileResponse(Profile profile, List<object> profileChanges = null)
+        public ProfileResponse CreateProfileResponse(ref Profile profile, List<object> profileChanges = null)
             => new ProfileResponse
             {
                 ProfileRevision = profile.Revision + 1,
@@ -40,14 +41,14 @@ namespace ParseBackend.Services
                 ResponseVersion = 1
             };
 
-        public async Task<ProfileResponse> CreateProfileResponse(AthenaData profile, List<object> profileChanges = null)
+        public ProfileResponse CreateProfileResponse(ref AthenaData profile, List<object> profileChanges = null)
             => new ProfileResponse
             {
-                ProfileRevision = profile.Rvn,
+                ProfileRevision = profile.Rvn + 1,
                 ProfileId = "athena",
-                ProfileChangesBaseRevisionRevision = profile.Rvn -1,
+                ProfileChangesBaseRevisionRevision = profile.Rvn,
                 ProfileChanges = profileChanges ?? new List<object>(),
-                ProfileCommandRevision = profile.Rvn,
+                ProfileCommandRevision = profile.Rvn + 1,
                 ServerTime = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.sssZ"),
                 ResponseVersion = 1
             };
@@ -69,24 +70,42 @@ namespace ParseBackend.Services
                 Profile = profile
             }));
 
-            return await CreateProfileResponse(profile, profileChanges);
+            return CreateProfileResponse(ref profile, profileChanges);
         }
 
         public async Task<ProfileResponse> EquipBattleRoyaleCustomization(string accountId, EquipBattleRoyaleCustomizationRequest body)
         {
             var athenaData = await _mongoService.FindAthenaByAccountId(accountId);
 
-            _mongoService.EquipAthenaItem(ref athenaData, body.SlotName, body.ItemToSlot);
+            _mongoService.EquipAthenaItem(ref athenaData, body.SlotName, body.ItemToSlot, body.IndexWithinSlot);
 
             var profileChanges = new List<object>();
 
-            profileChanges.Add(new StatModified
+            var data = new StatModified
             {
                 Name = $"favorite_{body.SlotName.ToLower()}",
                 Value = body.ItemToSlot.ToString()
-            });
+            };
 
-            return await CreateProfileResponse(athenaData, profileChanges);
+            athenaData = await _mongoService.FindAthenaByAccountId(accountId); //idk how bad this is
+
+            data.Value = body.SlotName switch
+            {
+                "Character" => athenaData.Stats.CurrentItems.CurrentSkin,
+                "Backpack" => athenaData.Stats.CurrentItems.CurrentBackbling,
+                "Pickaxe" => athenaData.Stats.CurrentItems.CurrentPickaxe,
+                "SkyDiveContrail" => athenaData.Stats.CurrentItems.CurrentTrail,
+                "Glider" => athenaData.Stats.CurrentItems.CurrentGlider,
+                "MusicPack" => athenaData.Stats.CurrentItems.CurrentMusic,
+                "LoadingScreen" => athenaData.Stats.CurrentItems.CurrentLoadingScreen,
+                "Dance" => athenaData.Stats.CurrentItems.CurrentEmotes,
+                "ItemWrap" => athenaData.Stats.CurrentItems.CurrentWraps,
+                _ => throw new BaseException("", $"The item type \"{body.SlotName}\" was not found!", 1142, "")
+            };
+
+            profileChanges.Add(data);
+
+            return CreateProfileResponse(ref athenaData, profileChanges);
         }
 
         public async Task<ProfileResponse> MarkItemSeen(string accountId, MarkItemSeenRequest body)
@@ -109,7 +128,7 @@ namespace ParseBackend.Services
 
             _mongoService.UpdateAthenaRvn(ref athenaData);
 
-            return await CreateProfileResponse(athenaData, profileChanges);
+            return CreateProfileResponse(ref athenaData, profileChanges);
         }
 
         public async Task<ProfileResponse> SetItemFavoriteStatusBatch(string accountId, SetItemFavoriteStatusBatchRequest body)
@@ -130,7 +149,9 @@ namespace ParseBackend.Services
                 });
             }
 
-            return await CreateProfileResponse(athenaData, profileChanges);
+            _mongoService.UpdateAthenaRvn(ref athenaData);
+
+            return CreateProfileResponse(ref athenaData, profileChanges);
         }
     }
 }

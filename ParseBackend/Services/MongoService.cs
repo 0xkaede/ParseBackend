@@ -13,6 +13,7 @@ using ParseBackend.Models.Profile;
 using ParseBackend.Models.Profile.Attributes;
 using ParseBackend.Models.Profile.Stats;
 using ParseBackend.Utils;
+using System;
 using System.Diagnostics;
 using static ParseBackend.Global;
 
@@ -30,7 +31,7 @@ namespace ParseBackend.Services
         public Task<Profile> CreateCommonPublicProfile(string accountId);
 
         public void SeenAthenaItem(ref AthenaData athenaData, string templateId, bool isSeen);
-        public void EquipAthenaItem(ref AthenaData athenaData, string itemType, string itemId);
+        public void EquipAthenaItem(ref AthenaData athenaData, string itemType, string itemId, int index);
         public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool isFavorite);
 
         public void UpdateAthenaRvn(ref AthenaData athenaData);
@@ -63,7 +64,7 @@ namespace ParseBackend.Services
 
         private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)
             => Builders<AthenaData>.Filter.Eq(x => x.AccountId, accountId)
-            & Builders<AthenaData>.Filter.ElemMatch(x => x.Items, Builders<AthenaItemsData>.Filter.Eq(x => x.ItemId, templateId)); // so much better lad
+            & Builders<AthenaData>.Filter.ElemMatch(x => x.Items, Builders<AthenaItemsData>.Filter.Eq(x => x.ItemIdResponse, templateId)); // so much better lad
 
         private async Task<List<UserData>> GetAllUserProfiles()
         {
@@ -201,7 +202,8 @@ namespace ParseBackend.Services
                         Amount = 1,
                         Seen = false,
                         IsFavorite = false,
-                        ItemId = item
+                        ItemId = item,
+                        ItemIdResponse = item.ComputeSHA256Hash(),
                     });
                 }
                 catch
@@ -298,7 +300,7 @@ namespace ParseBackend.Services
 
             foreach(var item in athenaData.Items)
             {
-                athena.Items.Add(item.ItemId.ComputeSHA256Hash(), new ProfileItem
+                athena.Items.Add(item.ItemIdResponse, new ProfileItem
                 {
                     Attributes = JObject.FromObject(new ItemAttributes
                     {
@@ -491,8 +493,8 @@ namespace ParseBackend.Services
             var filter = FilterAthenaItem(athenaData.AccountId, templateId);
 
             var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().Seen, isSeen);
-
-            UpdateAthena(ref athenaData, filter, update);
+            athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == templateId).Seen = isSeen;
+            _athenaData.UpdateOne(filter, update);
         }
 
         public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool isFavorite)
@@ -500,21 +502,41 @@ namespace ParseBackend.Services
             var filter = FilterAthenaItem(athenaData.AccountId, templateId);
 
             var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().IsFavorite, isFavorite);
-
+            athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == templateId).IsFavorite = isFavorite;
             _athenaData.UpdateOne(filter, update);
         }
 
-        public void EquipAthenaItem(ref AthenaData athenaData, string itemType, string itemId)
+        public void EquipAthenaItem(ref AthenaData athenaData, string itemType, string itemId, int index)
         {
             var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
 
             var update = itemType switch
             {
                 "Character" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentSkin, itemId),
+                "Backpack" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentBackbling, itemId),
+                "Pickaxe" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentPickaxe, itemId),
+                "SkyDiveContrail" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentTrail, itemId),
+                "Glider" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentGlider, itemId),
+                "MusicPack" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentMusic, itemId),
+                "LoadingScreen" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentLoadingScreen, itemId),
+                "Dance" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentEmotes[index], itemId),
+                "ItemWrap" => index is -1 ? ItemWrapSupport(ref athenaData) : Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentWraps[index], itemId),
                 _ => throw new BaseException("", $"The item type \"{itemType}\" was not found!", 1142, "")
             };
 
             UpdateAthena(ref athenaData, filter, update);
+
+            UpdateDefinition<AthenaData> ItemWrapSupport(ref AthenaData athenaData)
+            {
+                for (int i = 0; i < 7; i++)
+                {
+                    var itemWrapUpdate = Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentWraps[i], itemId);
+
+                    _athenaData.UpdateOne(filter, itemWrapUpdate);
+                }
+
+                return update = Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentWraps[1], itemId);
+            }
         }
 
         private void UpdateAthena(ref AthenaData athenaData, FilterDefinition<AthenaData> filter, UpdateDefinition<AthenaData> update)
