@@ -74,8 +74,8 @@ namespace ParseBackend.Controllers
                 TokensUtils.RefreshTokens.Remove(refresh);
 
             var deviceId = CreateUuid();
-            var accessToken = TokenCreate.CreateAccess(accountData, clientId[0], form["grant_type"].ToString(), deviceId, 8);
-            var refreshToken = TokenCreate.CreateRefresh(accountData, clientId[0], form["grant_type"].ToString(), deviceId, 24);
+            var accessToken = TokenCreate.CreateAccess(ref accountData, clientId[0], form["grant_type"].ToString(), deviceId, 8);
+            var refreshToken = TokenCreate.CreateRefresh(ref accountData, clientId[0], form["grant_type"].ToString(), deviceId, 24);
 
             //await Utils.UpdateTokens(); soon
 

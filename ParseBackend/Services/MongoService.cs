@@ -1,4 +1,5 @@
 ﻿using Amazon.Runtime.Internal.Transform;
+using CUE4Parse.Utils;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.VisualBasic;
 using MongoDB.Driver;
@@ -62,12 +63,15 @@ namespace ParseBackend.Services
         public async Task InitDatabase()
         {
             Logger.Log("Database Is Online");
+            GrantAthenaFullLocker("6567c5ccddde4b91831771cf3e4f333a");
             await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
         }
 
         private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)
             => Builders<AthenaData>.Filter.Eq(x => x.AccountId, accountId)
             & Builders<AthenaData>.Filter.ElemMatch(x => x.Items, Builders<AthenaItemsData>.Filter.Eq(x => x.ItemIdResponse, templateId)); // so much better lad
+
+        #region DatabaseFinders
 
         private async Task<List<UserData>> GetAllUserProfiles()
         {
@@ -104,6 +108,10 @@ namespace ParseBackend.Services
             var users = await GetAllUserCommonCoreProfiles();
             return users.FirstOrDefault(x => x.AccountId == accountId);
         }
+
+        #endregion
+
+        #region DatabaseAccounts
 
         public async Task CreateAccount(string email, string password, string username)
         {
@@ -232,20 +240,6 @@ namespace ParseBackend.Services
             Logger.Log($"Account Created: {username}");
         }
 
-        /*public void LoginAccount(string email, string password, ref UserData data)
-        {
-            var users = GetAllUserProfiles().Result;
-
-            var emailCheck = users.FirstOrDefault(x => x.Email.Equals(email));
-            if (email is null)
-                throw new BaseException("", "Email wasnt found", 1008, "");
-
-            if (emailCheck.Password != password.ComputeSHA256Hash())
-                throw new BaseException("", "Password is wrong, Please try again!", 1008, "");
-
-            data = emailCheck;
-        }*/
-
         public async Task<UserData> LoginAccount(string email, string password)
         {
             var users = await GetAllUserProfiles();
@@ -259,6 +253,59 @@ namespace ParseBackend.Services
             Logger.Log("test4");
             return emailCheck;
         }
+
+        public void GrantAthenaFullLocker(string accountId)
+        {
+            var itemsToGrant = new List<AthenaItemsData>();
+            var itemsFromFile = _fileProviderService.GetAllCosmetics();
+
+            foreach (var item in itemsFromFile)
+            {
+                var itemToLower = item.ToLower();
+                var itemRaw = item.SubstringAfterLast("/").SubstringBefore(".");
+
+                var itemFixed = FixCosmetic(itemRaw, itemToLower);
+                if (itemFixed == null) continue;
+
+                itemsToGrant.Add(new AthenaItemsData
+                {
+                    Amount = 1,
+                    Seen = false,
+                    IsFavorite = false,
+                    ItemId = itemFixed,
+                    ItemIdResponse = itemFixed.ComputeSHA256Hash(),
+                });
+            }
+
+            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, accountId);
+            var update = Builders<AthenaData>.Update.Set(x => x.Items, itemsToGrant);
+
+            _athenaData.UpdateOne(filter, update);
+
+            string FixCosmetic(string itemRaw, string toLowerItem)
+            {
+                if (toLowerItem.Contains("characters"))
+                    return $"AthenaCharacter:{itemRaw}";
+
+                if (toLowerItem.Contains("backpacks"))
+                    return $"AthenaBackpack:{itemRaw}";
+
+                if (toLowerItem.Contains("pickaxe"))
+                    return $"AthenaPickaxe:{itemRaw}";
+
+                if (toLowerItem.Contains("dance"))
+                    return $"AthenaDance:{itemRaw}";
+
+                if (toLowerItem.Contains("musicpacks"))
+                    return $"AthenaMusicPack:{itemRaw}";
+
+                return null;
+            }
+        }
+
+        #endregion
+
+        #region FortniteProfileCreate
 
         public async Task<Profile> CreateAthenaProfile(string accountId)
         {
@@ -491,12 +538,17 @@ namespace ParseBackend.Services
             return null;
         }
 
+        #endregion
+
+        #region FortniteProfileChanges
+
         public void SeenAthenaItem(ref AthenaData athenaData, string templateId, bool isSeen)
         {
             var filter = FilterAthenaItem(athenaData.AccountId, templateId);
 
             var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().Seen, isSeen);
             athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == templateId).Seen = isSeen;
+
             _athenaData.UpdateOne(filter, update);
         }
 
@@ -527,7 +579,7 @@ namespace ParseBackend.Services
                 _ => throw new BaseException("", $"The item type \"{itemType}\" was not found!", 1142, "")
             };
 
-            UpdateAthena(ref athenaData, filter, update);
+            _athenaData.UpdateOne(filter, update);
 
             UpdateDefinition<AthenaData> ItemWrapSupport(ref AthenaData athenaData)
             {
@@ -557,5 +609,7 @@ namespace ParseBackend.Services
 
             _athenaData.UpdateOne(filter, update);
         }
+
+        #endregion
     }
 }

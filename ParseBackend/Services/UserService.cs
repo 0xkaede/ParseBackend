@@ -93,15 +93,15 @@ namespace ParseBackend.Services
 
             data.Value = body.SlotName switch
             {
-                "Character" => athenaData.Stats.CurrentItems.CurrentSkin,
-                "Backpack" => athenaData.Stats.CurrentItems.CurrentBackbling,
-                "Pickaxe" => athenaData.Stats.CurrentItems.CurrentPickaxe,
-                "SkyDiveContrail" => athenaData.Stats.CurrentItems.CurrentTrail,
-                "Glider" => athenaData.Stats.CurrentItems.CurrentGlider,
-                "MusicPack" => athenaData.Stats.CurrentItems.CurrentMusic,
-                "LoadingScreen" => athenaData.Stats.CurrentItems.CurrentLoadingScreen,
-                "Dance" => athenaData.Stats.CurrentItems.CurrentEmotes,
-                "ItemWrap" => athenaData.Stats.CurrentItems.CurrentWraps,
+                "Character" => athenaData.Stats.CurrentItems.CurrentSkin = body.ItemToSlot,
+                "Backpack" => athenaData.Stats.CurrentItems.CurrentBackbling = body.ItemToSlot,
+                "Pickaxe" => athenaData.Stats.CurrentItems.CurrentPickaxe = body.ItemToSlot,
+                "SkyDiveContrail" => athenaData.Stats.CurrentItems.CurrentTrail = body.ItemToSlot,
+                "Glider" => athenaData.Stats.CurrentItems.CurrentGlider = body.ItemToSlot,
+                "MusicPack" => athenaData.Stats.CurrentItems.CurrentMusic = body.ItemToSlot,
+                "LoadingScreen" => athenaData.Stats.CurrentItems.CurrentLoadingScreen = body.ItemToSlot,
+                "Dance" => athenaData.Stats.CurrentItems.CurrentEmotes[body.IndexWithinSlot] = body.ItemToSlot,
+                "ItemWrap" => athenaData.Stats.CurrentItems.CurrentWraps[body.IndexWithinSlot] = body.ItemToSlot,
                 _ => throw new BaseException("", $"The item type \"{body.SlotName}\" was not found!", 1142, "")
             };
 

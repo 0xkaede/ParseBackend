@@ -35,7 +35,7 @@ namespace ParseBackend.Utils
             return token;
         }
 
-        public static string CreateRefresh(UserData user, string clientId, string grant_type, string deviceId, int expiresIn)
+        public static string CreateRefresh(ref UserData user, string clientId, string grant_type, string deviceId, int expiresIn)
         {
             var token = JWT.Encode(new RefreshToken
             {
