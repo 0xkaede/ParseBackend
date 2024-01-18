@@ -1,10 +1,16 @@
-﻿using System.Security.Cryptography;
+﻿using ParseBackend.Models.Other;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace ParseBackend
 {
     public static class Global
     {
+        public static readonly Configuration Config = new Configuration
+        {
+            FortniteVersions = Enums.FortniteVersions.Version_11_31
+        };
+
         public static string FromBytes(this byte[] bytes) => Encoding.UTF8.GetString(bytes);
         public static byte[] ToBytes(this string txt) => Encoding.UTF8.GetBytes(txt);
 

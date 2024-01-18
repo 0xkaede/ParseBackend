@@ -2,8 +2,8 @@
 {
     public enum FortniteVersions
     {
-        Version_8_51 = 851,
+        Version_8_51 = 8_511,
 
-        Version_11_31 = 1131, //Yes
+        Version_11_31 = 11_31,
     }
 }
