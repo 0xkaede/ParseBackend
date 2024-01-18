@@ -342,6 +342,7 @@ namespace ParseBackend.Services
                         BookXp = athenaData.Stats.BattlePassStars,
                         SeasonMatchBoost = athenaData.Stats.BattleBoost,
                         SeasonFriendMatchBoost = athenaData.Stats.BattleBoostFriend,
+                        SeasonNum = Config.FortniteSeason
                     })
                 }
             };
