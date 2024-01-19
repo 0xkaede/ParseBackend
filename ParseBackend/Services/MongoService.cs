@@ -63,9 +63,8 @@ namespace ParseBackend.Services
         public async Task InitDatabase()
         {
             Logger.Log("Database Is Online");
-            //GrantAthenaFullLocker("6567c5ccddde4b91831771cf3e4f333a");
+            GrantAthenaFullLocker("6567c5ccddde4b91831771cf3e4f333a");
             //await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
-            await _fileProviderService.GenerateDailyQuest();
         }
 
         private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)
@@ -285,20 +284,34 @@ namespace ParseBackend.Services
 
             string FixCosmetic(string itemRaw, string toLowerItem)
             {
+                if (toLowerItem.Contains("random")) return null;
+
                 if (toLowerItem.Contains("characters"))
                     return $"AthenaCharacter:{itemRaw}";
 
-                if (toLowerItem.Contains("backpacks"))
+                if (toLowerItem.Contains("backpacks") || toLowerItem.Contains("pets"))
                     return $"AthenaBackpack:{itemRaw}";
 
                 if (toLowerItem.Contains("pickaxe"))
                     return $"AthenaPickaxe:{itemRaw}";
 
-                if (toLowerItem.Contains("dance"))
+                if (toLowerItem.Contains("dance") || toLowerItem.Contains("sprays") || toLowerItem.Contains("toys"))
                     return $"AthenaDance:{itemRaw}";
 
                 if (toLowerItem.Contains("musicpacks"))
                     return $"AthenaMusicPack:{itemRaw}";
+
+                if (toLowerItem.Contains("loadingscreens"))
+                    return $"AthenaLoadingScreen:{itemRaw}";
+
+                if (toLowerItem.Contains("wraps"))
+                    return $"AthenaItemWrap:{itemRaw}";
+
+                if (toLowerItem.Contains("gliders"))
+                    return $"AthenaGlider:{itemRaw}";
+
+                if (toLowerItem.Contains("contrail"))
+                    return $"AthenaSkyDiveContrail:{itemRaw}";
 
                 return null;
             }
