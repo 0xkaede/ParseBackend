@@ -86,9 +86,11 @@ namespace ParseBackend.Services
 
             var profileChanges = new List<object>();
 
+            var poop = body.SlotName.ToLower().Contains("wrap") ? "itemwraps" : body.SlotName.ToLower();
+
             var data = new StatModified
             {
-                Name = $"favorite_{body.SlotName.ToLower()}",
+                Name = $"favorite_{poop}",
                 Value = body.ItemToSlot.ToString()
             };
 
