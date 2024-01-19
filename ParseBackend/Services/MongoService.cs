@@ -63,8 +63,9 @@ namespace ParseBackend.Services
         public async Task InitDatabase()
         {
             Logger.Log("Database Is Online");
-            GrantAthenaFullLocker("6567c5ccddde4b91831771cf3e4f333a");
-            await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
+            //GrantAthenaFullLocker("6567c5ccddde4b91831771cf3e4f333a");
+            //await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
+            await _fileProviderService.GenerateDailyQuest();
         }
 
         private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)
@@ -342,7 +343,12 @@ namespace ParseBackend.Services
                         BookXp = athenaData.Stats.BattlePassStars,
                         SeasonMatchBoost = athenaData.Stats.BattleBoost,
                         SeasonFriendMatchBoost = athenaData.Stats.BattleBoostFriend,
-                        SeasonNum = Config.FortniteSeason
+                        SeasonNum = Config.FortniteSeason,
+                        QuestManager = new QuestManager
+                        {
+                            DailyLoginInterval = DateTime.Now,
+                            DailyQuestRerolls = 1
+                        }
                     })
                 }
             };
@@ -448,6 +454,8 @@ namespace ParseBackend.Services
                     })
                 });
             }
+
+
 
             return athena;
         }

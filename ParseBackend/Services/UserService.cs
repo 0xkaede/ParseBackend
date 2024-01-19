@@ -3,12 +3,14 @@ using Newtonsoft.Json.Linq;
 using ParseBackend.Exceptions;
 using ParseBackend.Models.Database.Athena;
 using ParseBackend.Models.Profile;
+using ParseBackend.Models.Profile.Attributes;
 using ParseBackend.Models.Profile.Changes;
 using ParseBackend.Models.Request;
 using ParseBackend.Models.Response;
 using ParseBackend.Utils;
 using System;
 using System.Security.Authentication;
+using static ParseBackend.Global;
 
 namespace ParseBackend.Services
 {
@@ -18,6 +20,7 @@ namespace ParseBackend.Services
         public Task<ProfileResponse> EquipBattleRoyaleCustomization(string accountId, EquipBattleRoyaleCustomizationRequest body);
         public Task<ProfileResponse> MarkItemSeen(string accountId, MarkItemSeenRequest body);
         public Task<ProfileResponse> SetItemFavoriteStatusBatch(string accountId, SetItemFavoriteStatusBatchRequest body);
+        public Task<ProfileResponse> ClientQuestLogin(string accountId);
     }
 
     public class UserService : IUserService
@@ -67,10 +70,10 @@ namespace ParseBackend.Services
 
             var profileChanges = new List<object>();
 
-            profileChanges.Add(JObject.FromObject(new FullProfileUpdate
+            profileChanges.Add(new FullProfileUpdate // what was i doing
             {
                 Profile = profile
-            }));
+            });
 
             return CreateProfileResponse(ref profile, profileChanges);
         }
@@ -175,6 +178,56 @@ namespace ParseBackend.Services
 
             _mongoService.UpdateAthenaRvn(ref athenaData);
 
+            return CreateProfileResponse(ref athenaData, profileChanges);
+        }
+
+        public async Task<ProfileResponse> ClientQuestLogin(string accountId) // not finished
+        {
+            var athenaData = await _mongoService.FindAthenaByAccountId(accountId);
+
+            var questList = await _fileProviderService.GenerateDailyQuest();
+
+            var profileChanges = new List<object>();
+
+            foreach(var quest in questList)
+            {
+                var questAttributes = new QuestAttributes
+                {
+                    ChallengeBundleId = "",
+                    ChallengeLinkedQuestGiven = "",
+                    ChallengeLinkedQuestParent = "",
+                    CreationTime = CurrentTime(),
+                    Favorite = false,
+                    ItemSeen = false,
+                    SentNewNotification = false,
+                    LastStateChangeTime = CurrentTime(),
+                    QuestState = "Active",
+                    MaxLevelBonus = 0,
+                    Level = -1,
+                    XP = 0,
+                    XpRewardScalar = 0,
+                    QuestPool = "",
+                    QuestRarity = "uncommon",
+                };
+
+                var data = JObject.FromObject(questAttributes);
+
+                foreach(var objectives in quest.Value.Objects)
+                    data[$"completion_{objectives.Key}"] = 0;
+
+                profileChanges.Add(new ItemAdded
+                {
+                    Item = new ProfileItem
+                    {
+                        Attributes = data,
+                        Quantity = 1,
+                        TemplateId = $"Quest:{quest.Key}"
+                    },
+                    ItemId = $"Quest:{quest.Key}".ComputeSHA256Hash()
+                });
+            }
+
+            _mongoService.UpdateAthenaRvn(ref athenaData);
             return CreateProfileResponse(ref athenaData, profileChanges);
         }
     }
