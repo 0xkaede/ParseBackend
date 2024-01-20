@@ -16,6 +16,36 @@ namespace ParseBackend.Models.Database.Athena
 
         [BsonElement("stats")]
         public AthenaStatsData Stats { get; set; }
+
+        [BsonElement("dailyQuest")]
+        public AthenaDailyQuestData DailyQuestData { get; set; } = new AthenaDailyQuestData();
+    }
+
+    public class AthenaDailyQuestData
+    {
+        [BsonElement("dailyLoginInterval")]
+        public DateTime DailyLoginInterval { get; set; }
+
+        [BsonElement("dailyLoginIntervalString")]
+        public string DailyLoginIntervalString { get; set; }
+
+        [BsonElement("dailyQuestRerolls")]
+        public int DailyQuestRerolls { get; set; }
+
+        [BsonElement("quests")]
+        public List<AthenaChallengeData> Quests { get; set; } = new List<AthenaChallengeData>();
+    }
+
+    public class AthenaChallengeData
+    {
+        [BsonElement("itemId")]
+        public string ItemId { get; set; }
+
+        [BsonElement("parentAsset")]
+        public string ParentAsset { get; set; }
+
+        [BsonElement("objectives")]
+        public List<string> Objectives { get; set; }
     }
 
     public class AthenaStatsData

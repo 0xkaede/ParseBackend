@@ -23,7 +23,7 @@ namespace ParseBackend.Services
     {
         public List<string> GetAllCosmetics();
 
-        public Task<Dictionary<string, BaseChallenge>> GenerateDailyQuest();
+        public Task<Dictionary<string, BaseChallenge>> GenerateDailyQuest(List<string> questAssets = null);
     }
 
     public class FileProviderService : IFileProviderService
@@ -68,21 +68,25 @@ namespace ParseBackend.Services
 
         public List<string> GetAllCosmetics() => GetAssetsFromPath($"FortniteGame/Content/Athena/Items/Cosmetics");
 
-        public async Task<Dictionary<string, BaseChallenge>> GenerateDailyQuest()
+        public async Task<Dictionary<string, BaseChallenge>> GenerateDailyQuest(List<string> questAssets = null)
         {
             var response = new Dictionary<string, BaseChallenge>();
-            var allQuestsList = GetAssetsFromPath("FortniteGame/Content/Athena/Items/Quests/DailyQuests/Quests");
-            var grantQuestsList = new List<string>();
+            var grantQuestsList = questAssets ?? new List<string>();
 
-            var random = new Random();
-
-            for (int i = 0; i < 3; i++) //the only way ik icl
+            if(questAssets is null)
             {
-                int index = random.Next(allQuestsList.Count);
-                var newQuest = allQuestsList[index];
+                var allQuestsList = GetAssetsFromPath("FortniteGame/Content/Athena/Items/Quests/DailyQuests/Quests");
 
-                allQuestsList.Remove(newQuest);
-                grantQuestsList.Add(newQuest);
+                var random = new Random();
+
+                for (int i = 0; i < 3; i++) //the only way ik icl
+                {
+                    int index = random.Next(allQuestsList.Count);
+                    var newQuest = allQuestsList[index];
+
+                    allQuestsList.Remove(newQuest);
+                    grantQuestsList.Add(newQuest);
+                }
             }
 
             foreach (var quest in grantQuestsList)

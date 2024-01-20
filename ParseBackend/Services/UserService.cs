@@ -1,6 +1,7 @@
 ﻿using MongoDB.Driver;
 using Newtonsoft.Json.Linq;
 using ParseBackend.Exceptions;
+using ParseBackend.Models.CUE4Parse.Challenges;
 using ParseBackend.Models.Database.Athena;
 using ParseBackend.Models.Profile;
 using ParseBackend.Models.Profile.Attributes;
@@ -134,6 +135,8 @@ namespace ParseBackend.Services
 
             profileChanges.Add(data);
 
+            _mongoService.UpdateAthenaRvn(ref athenaData);
+
             return CreateProfileResponse(ref athenaData, profileChanges);
         }
 
@@ -187,11 +190,21 @@ namespace ParseBackend.Services
         {
             var athenaData = await _mongoService.FindAthenaByAccountId(accountId);
 
-            var questList = await _fileProviderService.GenerateDailyQuest();
-
             var profileChanges = new List<object>();
 
-            foreach(var quest in questList)
+            if (athenaData.DailyQuestData.DailyLoginInterval.AddHours(24) < DateTime.Now) //new challenges
+            {
+                var questList = await _fileProviderService.GenerateDailyQuest();
+
+                if(athenaData.DailyQuestData.DailyQuestRerolls <= 0)
+                    _mongoService.UpdateAthenaQuestReRoles(ref athenaData, 1);
+
+                _mongoService.UpdateAthenaQuestLoginTime(ref athenaData);
+
+                _mongoService.UpdateAthenaNewDailyQuestsList(ref athenaData, questList);
+            }
+
+            foreach (var quest in athenaData.DailyQuestData.Quests)
             {
                 var questAttributes = new QuestAttributes
                 {
@@ -214,8 +227,11 @@ namespace ParseBackend.Services
 
                 var data = JObject.FromObject(questAttributes);
 
-                foreach(var objectives in quest.Value.Objects)
-                    data[$"completion_{objectives.Key}"] = 0;
+                foreach (var objectives in quest.Objectives)
+                {
+                    var compSplit = objectives.Split(':');
+                    data[$"completion_{compSplit[0]}"] = int.Parse(compSplit[1]);
+                }
 
                 profileChanges.Add(new ItemAdded
                 {
@@ -223,13 +239,14 @@ namespace ParseBackend.Services
                     {
                         Attributes = data,
                         Quantity = 1,
-                        TemplateId = $"Quest:{quest.Key}"
+                        TemplateId = $"Quest:{quest.ItemId}"
                     },
-                    ItemId = $"Quest:{quest.Key}".ComputeSHA256Hash()
+                    ItemId = $"Quest:{quest.ItemId}".ComputeSHA256Hash()
                 });
             }
 
             _mongoService.UpdateAthenaRvn(ref athenaData);
+
             return CreateProfileResponse(ref athenaData, profileChanges);
         }
     }

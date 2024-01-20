@@ -7,6 +7,7 @@ using MongoDB.Driver.Linq;
 using Newtonsoft.Json.Linq;
 using ParseBackend.Exceptions;
 using ParseBackend.Exceptions.Common;
+using ParseBackend.Models.CUE4Parse.Challenges;
 using ParseBackend.Models.Database;
 using ParseBackend.Models.Database.Athena;
 using ParseBackend.Models.Database.CommonCore;
@@ -36,6 +37,9 @@ namespace ParseBackend.Services
         public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool isFavorite);
 
         public void UpdateAthenaRvn(ref AthenaData athenaData);
+        public void UpdateAthenaQuestReRoles(ref AthenaData athenaData, int num);
+        public void UpdateAthenaNewDailyQuestsList(ref AthenaData athenaData, Dictionary<string, BaseChallenge> challengeData);
+        public void UpdateAthenaQuestLoginTime(ref AthenaData athenaData);
     }
 
     public class MongoService : IMongoService
@@ -51,7 +55,7 @@ namespace ParseBackend.Services
 
             var client = new MongoClient("mongodb://localhost");
 
-            var mongoDatabase = client.GetDatabase("KaedeBackend");
+            var mongoDatabase = client.GetDatabase("ParseBackend");
 
             _userProfiles = mongoDatabase.GetCollection<UserData>("UserProfiles");
             _athenaData = mongoDatabase.GetCollection<AthenaData>("AthenaData");
@@ -63,8 +67,9 @@ namespace ParseBackend.Services
         public async Task InitDatabase()
         {
             Logger.Log("Database Is Online");
-            GrantAthenaFullLocker("6567c5ccddde4b91831771cf3e4f333a");
-            //await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
+
+            //GrantAthenaFullLocker("6567c5ccddde4b91831771cf3e4f333a");
+            await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
         }
 
         private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)
@@ -360,13 +365,11 @@ namespace ParseBackend.Services
                         QuestManager = new QuestManager
                         {
                             DailyLoginInterval = DateTime.Now,
-                            DailyQuestRerolls = 1
+                            DailyQuestRerolls = 0
                         }
                     })
                 }
             };
-
-            //add full locker like elixir
 
             foreach(var item in athenaData.Items)
             {
@@ -597,13 +600,13 @@ namespace ParseBackend.Services
                 "MusicPack" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentMusic, itemId),
                 "LoadingScreen" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentLoadingScreen, itemId),
                 "Dance" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentEmotes[index], itemId),
-                "ItemWrap" => index is -1 ? ItemWrapSupport(ref athenaData) : Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentWraps[index], itemId),
+                "ItemWrap" => index is -1 ? ItemWrapSupport() : Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentWraps[index], itemId),
                 _ => throw new BaseException("", $"The item type \"{itemType}\" was not found!", 1142, "")
             };
 
             _athenaData.UpdateOne(filter, update);
 
-            UpdateDefinition<AthenaData> ItemWrapSupport(ref AthenaData athenaData)
+            UpdateDefinition<AthenaData> ItemWrapSupport()
             {
                 for (int i = 0; i < 7; i++)
                 {
@@ -628,6 +631,57 @@ namespace ParseBackend.Services
         {
             var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
             var update = Builders<AthenaData>.Update.Set(x => x.Rvn, athenaData.Rvn + 1);
+
+            athenaData.Rvn += 1;
+
+            _athenaData.UpdateOne(filter, update);
+        }
+
+        public void UpdateAthenaQuestReRoles(ref AthenaData athenaData, int num)
+        {
+            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
+            var update = Builders<AthenaData>.Update.Set(x => x.DailyQuestData.DailyQuestRerolls, num);
+
+            athenaData.DailyQuestData.DailyQuestRerolls = num;
+
+            _athenaData.UpdateOne(filter, update);
+        }
+
+        public void UpdateAthenaQuestLoginTime(ref AthenaData athenaData)
+        {
+            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
+            var update = Builders<AthenaData>.Update.Set(x => x.DailyQuestData.DailyLoginInterval, DateTime.Now);
+            var update2 = Builders<AthenaData>.Update.Set(x => x.DailyQuestData.DailyLoginIntervalString, CurrentTime());
+
+            athenaData.DailyQuestData.DailyLoginInterval = DateTime.Now;
+
+            _athenaData.UpdateOne(filter, update);
+            _athenaData.UpdateOne(filter, update2);
+        }
+
+        public void UpdateAthenaNewDailyQuestsList(ref AthenaData athenaData, Dictionary<string, BaseChallenge> challengeData)
+        {
+            var updateList = new List<AthenaChallengeData>();
+
+            foreach(var challenge in challengeData)
+            {
+                var data = new AthenaChallengeData
+                {
+                    ParentAsset = "",
+                    Objectives = new List<string>(),
+                    ItemId = challenge.Key
+                };
+
+                foreach(var chal in challenge.Value.Objects)
+                    data.Objectives.Add($"completion_{chal.Key}:0");
+
+                updateList.Add(data);
+            }
+
+            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
+            var update = Builders<AthenaData>.Update.Set(x => x.DailyQuestData.Quests, updateList);
+
+            athenaData.DailyQuestData.Quests = updateList;
 
             _athenaData.UpdateOne(filter, update);
         }

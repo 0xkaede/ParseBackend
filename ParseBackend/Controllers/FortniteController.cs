@@ -17,15 +17,8 @@ namespace ParseBackend.Controllers
 
         [HttpPost]
         [Route("game/v2/grant_access/{holder}")]
-        public ActionResult<string> GrantAccess()
-        {
-            Response.StatusCode = 204;
-            return "{}";
-        }
-
-        [HttpGet]
         [Route("receipts/v1/account/{accountId}/receipts")]
-        public ActionResult<string> Receipts()
+        public ActionResult<string> GrantAccess()
         {
             Response.StatusCode = 204;
             return "{}";
