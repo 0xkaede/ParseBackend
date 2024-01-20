@@ -19,4 +19,8 @@
     <ProjectReference Include="..\..\FortniteEmoteExporter\CUE4Parse-master\CUE4Parse\CUE4Parse.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Models\Content\" />
+  </ItemGroup>
+
 </Project>
