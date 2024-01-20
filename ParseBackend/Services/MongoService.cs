@@ -64,11 +64,23 @@ namespace ParseBackend.Services
             _ = InitDatabase();
         }
 
+        public string RandomString(int length)
+        {
+            Random random = new Random();
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            return new string(Enumerable.Repeat(chars, length)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
+
         public async Task InitDatabase()
         {
-            Logger.Log("Database Is Online");
-
-            //GrantAthenaFullLocker("6567c5ccddde4b91831771cf3e4f333a");
+            /*Logger.Log("Database Is Online");
+            for(int i = 0; i < 3000; i++)
+            {
+                var test = RandomString(12);
+                await CreateAccount(test, test, test);
+            }*/
+            GrantAthenaFullLocker("78bf7fe5e26d454f902cf55c5d54f775");
             await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
         }
 

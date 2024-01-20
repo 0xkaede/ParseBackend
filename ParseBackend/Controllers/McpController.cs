@@ -45,6 +45,7 @@ namespace ParseBackend.Controllers
                 "markitemseen" => await _userService.MarkItemSeen(accountId, JsonConvert.DeserializeObject<MarkItemSeenRequest>(body)!),
                 "setitemfavoritestatusbatch" => await _userService.SetItemFavoriteStatusBatch(accountId, JsonConvert.DeserializeObject<SetItemFavoriteStatusBatchRequest>(body)!),
                 "clientquestlogin" => await _userService.ClientQuestLogin(accountId),
+                "setpartyassistquest" => await _userService.SetPartyAssistQuest(accountId, JsonConvert.DeserializeObject<JObject>(body)!),
                 _ => throw new BaseException("", $"The action \"{oparation}\" was not found!", 1142, "MCP.Epic.Error")
             };
             

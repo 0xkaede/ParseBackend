@@ -22,6 +22,7 @@ namespace ParseBackend.Services
         public Task<ProfileResponse> MarkItemSeen(string accountId, MarkItemSeenRequest body);
         public Task<ProfileResponse> SetItemFavoriteStatusBatch(string accountId, SetItemFavoriteStatusBatchRequest body);
         public Task<ProfileResponse> ClientQuestLogin(string accountId);
+        public Task<ProfileResponse> SetPartyAssistQuest(string accountId, JObject lazy);
     }
 
     public class UserService : IUserService
@@ -214,7 +215,7 @@ namespace ParseBackend.Services
                     CreationTime = CurrentTime(),
                     Favorite = false,
                     ItemSeen = false,
-                    SentNewNotification = false,
+                    SentNewNotification = true,
                     LastStateChangeTime = CurrentTime(),
                     QuestState = "Active",
                     MaxLevelBonus = 0,
@@ -247,6 +248,21 @@ namespace ParseBackend.Services
 
             _mongoService.UpdateAthenaRvn(ref athenaData);
 
+            return CreateProfileResponse(ref athenaData, profileChanges);
+        }
+
+        public async Task<ProfileResponse> SetPartyAssistQuest(string accountId, JObject lazy)
+        {
+            var athenaData = await _mongoService.FindAthenaByAccountId(accountId);
+            var profileChanges = new List<object>();
+
+            profileChanges.Add(new StatModified
+            {
+                Name = "party_assist_quest",
+                Value = lazy["questToPinAsPartyAssist"].ToString()
+            });
+
+            _mongoService.UpdateAthenaRvn(ref athenaData);
             return CreateProfileResponse(ref athenaData, profileChanges);
         }
     }
