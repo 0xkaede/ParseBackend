@@ -86,9 +86,27 @@ namespace ParseBackend.Services
         {
             var athenaData = await _mongoService.FindAthenaByAccountId(accountId);
 
-            _mongoService.EquipAthenaItem(ref athenaData, body.SlotName, body.ItemToSlot, body.IndexWithinSlot);
-
             var profileChanges = new List<object>();
+
+            if (body.VariantUpdates.Count() > 0)
+            {
+                foreach(var variantUpdate in body.VariantUpdates)
+                {
+                    athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == body.ItemToSlot)!.Variants
+                        .FirstOrDefault(x => x.Channel == variantUpdate.Channel)!.Active = variantUpdate.Active;
+
+                    _mongoService.UpdateAthenaItemVariants(ref athenaData, body.ItemToSlot);
+
+                    profileChanges.Add(new ItemAttrChanged
+                    {
+                        ItemId = body.ItemToSlot,
+                        AttributeName = "variants",
+                        AttributeValue = athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == body.ItemToSlot)!.Variants,
+                    });
+                }
+            }
+
+            _mongoService.EquipAthenaItem(ref athenaData, body.SlotName, body.ItemToSlot, body.IndexWithinSlot);
 
             var poop = body.SlotName.ToLower().Contains("wrap") ? "itemwraps" : body.SlotName.ToLower();
 
@@ -314,6 +332,8 @@ namespace ParseBackend.Services
 
             foreach (var item in catalog.ItemGrants)
             {
+                var variant = await _fileProviderService.GetCosmeticsVariants(item.TemplateId.Contains(":") ? item.TemplateId.Split(":")[1] : item.TemplateId);
+
                 _mongoService.AddedAthenaItem(ref athenaData, new AthenaItemsData
                 {
                     Seen = false,
@@ -321,7 +341,7 @@ namespace ParseBackend.Services
                     IsFavorite = false,
                     ItemId = item.TemplateId,
                     ItemIdResponse = item.TemplateId.ComputeSHA256Hash(),
-                    Variants = new List<Variant>(), //add later today
+                    Variants = variant, //add later today
                 });
 
                 multiUpdateEnded.Add(new ItemAdded
@@ -337,7 +357,7 @@ namespace ParseBackend.Services
                             Level = -1,
                             MaxLevelBonus = 0,
                             RandomSelectionCount = 0,
-                            Variants = new List<Variant>(),
+                            Variants = variant,
                             XP = 0,
                         }
                     },

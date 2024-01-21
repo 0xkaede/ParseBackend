@@ -22,6 +22,8 @@ using Newtonsoft.Json;
 using ParseBackend.Models.Storefront;
 using ParseBackend.Models.Other;
 using CUE4Parse.GameTypes.PUBG.Assets.Exports;
+using ParseBackend.Models.Profile.Attributes;
+using CUE4Parse.UE4.Objects.GameplayTags;
 
 namespace ParseBackend.Services
 {
@@ -33,6 +35,7 @@ namespace ParseBackend.Services
         public Task<Catalog> GenerateItemShop();
 
         public Task<CatalogEntry> GetCatalogByOfferId(string offerId);
+        public Task<List<Variant>> GetCosmeticsVariants(string itemId);
     }
 
     public class FileProviderService : IFileProviderService
@@ -314,6 +317,71 @@ namespace ParseBackend.Services
                 SortPriority = -1,
                 CatalogGroupPriority = 0,
             };
+        }
+
+        public async Task<List<Variant>> GetCosmeticsVariants(string itemId)
+        {
+            var response = new List<Variant>();
+            var cosmetics = GetAllCosmetics();
+
+            var findItem = cosmetics.FirstOrDefault(x => x.ToLower().Contains(itemId.ToLower()));
+
+            if (findItem is null)
+                return new List<Variant>();
+
+            var itemObject = await Provider.LoadObjectAsync(findItem.SubstringBefore("."));
+
+            if(!itemObject.TryGetValue(out UObject[] itemVariants, "ItemVariants"))
+                return new List<Variant>();
+
+            var poop = "";
+            foreach(var variant in itemVariants)
+            {
+                variant.TryGetValue(out FGameplayTag variantChannelTag, "VariantChannelTag");
+
+                if (variant.ExportType is "FortCosmeticNumericalVariant") //hard
+                {
+                    response.Add(new Variant
+                    {
+                        Channel = variantChannelTag.GetLastTag(),
+                        Active = "1",
+                        Owned = new List<string>(),
+                    });
+                }
+
+                Logger.Log(variantChannelTag.TagName.PlainText);
+
+                if(variant.TryGetValue(out FStructFallback[] partOptions, "PartOptions"))
+                    response.Add(GenerateVariantFromStruct(partOptions, variantChannelTag.GetLastTag()));
+
+                if (variant.TryGetValue(out FStructFallback[] materialOptions, "MaterialOptions"))
+                    response.Add(GenerateVariantFromStruct(materialOptions, variantChannelTag.GetLastTag()));
+            }
+
+            return response;
+        }
+
+        private Variant GenerateVariantFromStruct(FStructFallback[] options, string tag)
+        {
+            var variant = new Variant
+            {
+                Channel = tag,
+                Active = "",
+                Owned = new List<string>(),
+            };
+
+            foreach (var option in options)
+            {
+                option.TryGetValue(out FGameplayTag customizationVariantTag, "CustomizationVariantTag");
+                option.TryGetValue(out bool bIsDefault, "bIsDefault");
+
+                if (bIsDefault)
+                    variant.Active = customizationVariantTag.GetLastTag();
+
+                variant.Owned.Add(customizationVariantTag.GetLastTag());
+            }
+
+            return variant;
         }
     }
 }

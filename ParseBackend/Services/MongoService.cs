@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.VisualBasic;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ParseBackend.Exceptions;
 using ParseBackend.Exceptions.Common;
@@ -44,6 +45,7 @@ namespace ParseBackend.Services
         public void UpdateAthenaQuestReRoles(ref AthenaData athenaData, int num);
         public void UpdateAthenaNewDailyQuestsList(ref AthenaData athenaData, Dictionary<string, BaseChallenge> challengeData);
         public void UpdateAthenaQuestLoginTime(ref AthenaData athenaData);
+        public void UpdateAthenaItemVariants(ref AthenaData athenaData, string templateId);
         public void AddedAthenaItem(ref AthenaData athenaData, AthenaItemsData athenaItem);
         public void UpdateCommonCoreVbucks(ref CommonCoreData commonCoreData);
         public void UpdateCommonCoreRvn(ref CommonCoreData commonCoreData);
@@ -81,6 +83,7 @@ namespace ParseBackend.Services
 
         public async Task InitDatabase()
         {
+            var data = await _fileProviderService.GetCosmeticsVariants("CID_207_Athena_Commando_M_FootballDudeA");
             /*Logger.Log("Database Is Online");
             for(int i = 0; i < 3000; i++)
             {
@@ -701,6 +704,17 @@ namespace ParseBackend.Services
             var update = Builders<AthenaData>.Update.Set(x => x.DailyQuestData.Quests, updateList);
 
             athenaData.DailyQuestData.Quests = updateList;
+
+            _athenaData.UpdateOne(filter, update);
+        }
+
+        public void UpdateAthenaItemVariants(ref AthenaData athenaData, string templateId)
+        {
+            var filter = FilterAthenaItem(athenaData.AccountId, templateId);
+
+            var variant = athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == templateId)!.Variants;
+
+            var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().Variants, variant);
 
             _athenaData.UpdateOne(filter, update);
         }

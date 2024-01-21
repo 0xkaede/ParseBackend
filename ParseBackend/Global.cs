@@ -1,4 +1,5 @@
-﻿using CUE4Parse.UE4.Versions;
+﻿using CUE4Parse.UE4.Objects.GameplayTags;
+using CUE4Parse.UE4.Versions;
 using ParseBackend.Enums;
 using ParseBackend.Models.Other;
 using System.Security.Cryptography;
@@ -47,21 +48,21 @@ namespace ParseBackend
             {
                 new StorefrontConfiguration
                 {
-                    ItemIds = new List<string> { "EID_IndigoApple" },
+                    ItemIds = new List<string> { "CID_149_Athena_Commando_F_SoccerGirlB" },
                     BannerOverride = "Back",
                     CategoryNumber = null,
                     Price = 500
                 },
                 new StorefrontConfiguration
                 {
-                    ItemIds = new List<string> { "EID_SkeletonDance" },
+                    ItemIds = new List<string> { "CID_146_Athena_Commando_M_SoccerDudeC" },
                     BannerOverride = "",
                     CategoryNumber = null,
                     Price = 1200
                 },
                 new StorefrontConfiguration
                 {
-                    ItemIds = new List<string> { "Pickaxe_ID_179_StarWand" },
+                    ItemIds = new List<string> { "CID_586_Athena_Commando_F_PunkDevil" },
                     BannerOverride = "MostPopular",
                     CategoryNumber = null,
                     Price = 300
@@ -100,5 +101,7 @@ namespace ParseBackend
         }
 
         public static readonly string JWT_SECRET = CreateUuid();
+
+        public static string GetLastTag(this FGameplayTag tag) => tag.TagName.PlainText.Split(".").LastOrDefault()!;
     }
 }
