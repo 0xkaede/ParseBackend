@@ -15,7 +15,7 @@ namespace ParseBackend.Controllers
             var stage = $"season{Config.FortniteSeason}";
 
             if (Config.FortniteVersions is Enums.FortniteVersions.Version_11_31)
-                stage = "Winter19";
+                stage = "winter19";
 
             return new Pages
             {
@@ -30,6 +30,7 @@ namespace ParseBackend.Controllers
                     News = new BattleRoyaleNews
                     {
                         Type = "Battle Royale News",
+                        MessagesOfTheDay = new List<object>(), //neeed todo
                         Messages = new List<Message>
                         {
                             new Message
