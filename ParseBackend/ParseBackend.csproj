@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <Folder Include="Models\Content\" />
+    <Folder Include="Models\Storefront\" />
   </ItemGroup>
 
 </Project>

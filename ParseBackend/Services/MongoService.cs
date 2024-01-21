@@ -27,6 +27,7 @@ namespace ParseBackend.Services
 
         public Task<UserData> FindUserByAccountId(string accountId);
         public Task<AthenaData> FindAthenaByAccountId(string accountId);
+        public Task<CommonCoreData> FindCommonCoreByAccountId(string accountId);
 
         public Task<Profile> CreateAthenaProfile(string accountId);
         public Task<Profile> CreateCommonCoreProfile(string accountId);
@@ -80,7 +81,7 @@ namespace ParseBackend.Services
                 var test = RandomString(12);
                 await CreateAccount(test, test, test);
             }*/
-            GrantAthenaFullLocker("78bf7fe5e26d454f902cf55c5d54f775");
+            //GrantAthenaFullLocker("78bf7fe5e26d454f902cf55c5d54f775");
             await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
         }
 
