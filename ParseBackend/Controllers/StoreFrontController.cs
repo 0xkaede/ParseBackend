@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using CUE4Parse.FileProvider;
+using Microsoft.AspNetCore.Mvc;
+using ParseBackend.Models.Storefront;
+using ParseBackend.Services;
 
 namespace ParseBackend.Controllers
 {
@@ -6,6 +9,18 @@ namespace ParseBackend.Controllers
     [Route("/fortnite/api/storefront")]
     public class StoreFrontController : Controller
     {
+        private readonly IFileProviderService _fileProviderService;
+
+        public StoreFrontController(IFileProviderService fileProviderService)
+        {
+            _fileProviderService = fileProviderService;
+        }
+        [HttpGet]
+        [Route("v2/catalog")]
+        public async Task<ActionResult<Catalog>> Store()
+           => await _fileProviderService.GenerateItemShop();
+
+
         [HttpGet]
         [Route("v2/keychain")]
         public async Task<ActionResult<List<string>>> KeyChain()

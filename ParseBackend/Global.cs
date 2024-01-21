@@ -11,7 +11,69 @@ namespace ParseBackend
         public static readonly Configuration Config = new Configuration
         {
             GamePath = "C:\\Users\\jmass\\Desktop\\Fortnite 11.31\\FortniteGame\\Content\\Paks",
-            FortniteVersions = FortniteVersions.Version_11_31
+            FortniteVersions = FortniteVersions.Version_11_31,
+            WeeklyStoreFront = new List<StorefrontConfiguration>
+            {
+                new StorefrontConfiguration
+                {
+                    ItemIds = new List<string> { "CID_395_Athena_Commando_F_ShatterFly", "BID_256_ShatterFly" },
+                    BannerOverride = "Back",
+                    CategoryNumber = "Panel 1",
+                    Price = 1200
+                },
+                new StorefrontConfiguration
+                {
+                    ItemIds = new List<string> { "Glider_ID_140_ShatterFly" },
+                    BannerOverride = "CollectTheSet",
+                    CategoryNumber = "Panel 1",
+                    Price = 1200
+                },
+                new StorefrontConfiguration
+                {
+                    ItemIds = new List<string> { "Wrap_051_ShatterFly" },
+                    BannerOverride = "CollectTheSet",
+                    CategoryNumber = "Panel 1",
+                    Price = 300
+                },
+                new StorefrontConfiguration
+                {
+                    ItemIds = new List<string> { "CID_654_Athena_Commando_F_GiftWrap" },
+                    BannerOverride = "Winter",
+                    CategoryNumber = "Panel 2",
+                    Price = 1200
+                },
+            },
+            DailyStoreFront = new List<StorefrontConfiguration>
+            {
+                new StorefrontConfiguration
+                {
+                    ItemIds = new List<string> { "EID_IndigoApple" },
+                    BannerOverride = "Back",
+                    CategoryNumber = null,
+                    Price = 500
+                },
+                new StorefrontConfiguration
+                {
+                    ItemIds = new List<string> { "EID_SkeletonDance" },
+                    BannerOverride = "",
+                    CategoryNumber = null,
+                    Price = 1200
+                },
+                new StorefrontConfiguration
+                {
+                    ItemIds = new List<string> { "Pickaxe_ID_179_StarWand" },
+                    BannerOverride = "MostPopular",
+                    CategoryNumber = null,
+                    Price = 300
+                },
+                new StorefrontConfiguration
+                {
+                    ItemIds = new List<string> { "Glider_ID_169_VoyagerRemix" },
+                    BannerOverride = "Winter",
+                    CategoryNumber = null,
+                    Price = 1200
+                },
+            }
         };
 
         public static string FromBytes(this byte[] bytes) => Encoding.UTF8.GetString(bytes);

@@ -16,6 +16,12 @@ using CUE4Parse.UE4.Assets.Objects;
 using ParseBackend.Models.CUE4Parse.Challenges;
 using CUE4Parse.UE4.Objects.Core.i18N;
 using CUE4Parse.UE4.Assets.Exports.Engine;
+using System.Net;
+using System.IO.Pipelines;
+using Newtonsoft.Json;
+using ParseBackend.Models.Storefront;
+using ParseBackend.Models.Other;
+using CUE4Parse.GameTypes.PUBG.Assets.Exports;
 
 namespace ParseBackend.Services
 {
@@ -24,6 +30,7 @@ namespace ParseBackend.Services
         public List<string> GetAllCosmetics();
 
         public Task<Dictionary<string, BaseChallenge>> GenerateDailyQuest(List<string> questAssets = null);
+        public Task<Catalog> GenerateItemShop();
     }
 
     public class FileProviderService : IFileProviderService
@@ -108,7 +115,7 @@ namespace ParseBackend.Services
             return response;
         }
 
-        public async Task<Dictionary<string, int>> GetChallengesObjectives(UObject questData) //might be universal already idk tho
+        private async Task<Dictionary<string, int>> GetChallengesObjectives(UObject questData) //might be universal already idk tho
         {
             questData.TryGetValue(out FStructFallback[] questObjectives, "Objectives");
 
@@ -125,7 +132,7 @@ namespace ParseBackend.Services
             return data;
         }
 
-        public async Task<Dictionary<string, int>> GetChallengesRewards(UObject questData)
+        private async Task<Dictionary<string, int>> GetChallengesRewards(UObject questData)
         {
             var ver = Config.FortniteVersions;
             var data = new Dictionary<string, int>();
@@ -153,6 +160,145 @@ namespace ParseBackend.Services
             //need 1 more i thinkg butttttttt i dont have 8.51 installed
 
             return data;
+        }
+
+        public async Task<Catalog> GenerateItemShop()
+        {
+            var dailyShop = new List<CatalogEntry>();
+            var weeklyShop = new List<CatalogEntry>();
+
+            foreach (var dailyStoreFront in Config.DailyStoreFront)
+                dailyShop.Add(await GenerateCatalogEntry(dailyStoreFront));
+
+            foreach (var weeklyStoreFront in Config.WeeklyStoreFront)
+                weeklyShop.Add(await GenerateCatalogEntry(weeklyStoreFront, 1));
+
+            return new Catalog
+            {
+                DailyPurchaseHrs = 24,
+                Expiration = "9999-12-31T00:00:00.000Z",
+                RefreshIntervalHrs = 24,
+                Storefronts = new List<Storefront>
+                {
+                    new Storefront
+                    {
+                        Name = "BRDailyStorefront",
+                        CatalogEntries = dailyShop
+                    },
+                    new Storefront
+                    {
+                        Name = "BRWeeklyStorefront",
+                        CatalogEntries = weeklyShop
+                    }
+                }
+            };
+        }
+
+        /// <param name="type">0 = Daily, 1 = Weekly Config</param>
+        /// <returns></returns>
+        private async Task<CatalogEntry> GenerateCatalogEntry(StorefrontConfiguration data, int type = 0)
+        {
+            var cosmetics = GetAllCosmetics();
+
+            var itemGrants = new List<CatalogEntryItemGrant>();
+            var requirements = new List<CatalogEntryRequirements>();
+
+            var displayAsset = string.Empty;
+
+            foreach (var item in data.ItemIds)
+            {
+                var findItem = cosmetics.FirstOrDefault(x => x.ToLower().Contains(item.ToLower()));
+
+                if (findItem is null)
+                    return new CatalogEntry();
+
+                var itemObject = await Provider.LoadObjectAsync(findItem.SubstringBefore("."));
+
+                var itemType = itemObject.ExportType.Replace("ItemDefinition", string.Empty);
+
+                if (itemObject.TryGetValue(out FSoftObjectPath displayAssetPath, "DisplayAssetPath"))
+                    if (string.IsNullOrEmpty(displayAsset))
+                        displayAsset = displayAssetPath.AssetPathName.PlainText;
+
+                itemGrants.Add(new CatalogEntryItemGrant
+                {
+                    Quantity = 1,
+                    TemplateId = $"{itemType}:{itemObject.Name}"
+                });
+
+                requirements.Add(new CatalogEntryRequirements
+                {
+                    MinQuantity = 1,
+                    RequiredId = $"{itemType}:{itemObject.Name}",
+                    RequirementType = "DenyOnItemOwnership",
+                });
+            }
+
+            var metaData = new List<CatalogEntryMetaInfo>
+            {
+                new CatalogEntryMetaInfo
+                {
+                    Key = "SectionId",
+                    Value = type is 0 ? "Featured" : "Featured2",
+                },
+                new CatalogEntryMetaInfo
+                {
+                    Key = "TileSize",
+                    Value = type is 0 ? "Small" : "Normal"
+                },
+            };
+
+            if (!string.IsNullOrEmpty(data.BannerOverride))
+            {
+                metaData.Add(new CatalogEntryMetaInfo
+                {
+                    Key = "BannerOverride",
+                    Value = data.BannerOverride
+                });
+            }
+
+
+            return new CatalogEntry
+            {
+                DevName = $"[Dev]Kaede:{"ItemShop".ComputeSHA256Hash()}:{data.ItemIds[0].ComputeSHA256Hash()}",
+                OfferId = data.ItemIds[0].ComputeSHA256Hash(),
+                FulfillmentIds = { },
+                DailyLimit = -1,
+                WeeklyLimit = -1,
+                MonthlyLimit = -1,
+                Categories = new List<string> { data.CategoryNumber },
+                Prices = new List<CatalogEntryPrice>
+                {
+                    new CatalogEntryPrice
+                    {
+                        CurrencyType = "MtxCurrency",
+                        CurrencySubType = "",
+                        RegularPrice = data.Price,
+                        FinalPrice = data.Price,
+                        SaleExpiration = DateTime.Now.AddDays(1).ToString("yyyy-MM-ddTHH:mm:ss.sssZ"),
+                        BasePrice = data.Price
+                    }
+                },
+                Meta = "{\"SectionId\":\"Featured\",\"TileSize\":\"Small\"}",
+                MatchFilter = "",
+                FilterWeight = 0,
+                AppStoreId = new List<string>(),
+                Requirements = requirements,
+                OfferType = "StaticPrice",
+                GiftInfo = new CatalogEntryGiftInfo
+                {
+                    ForcedGiftBoxTemplateId = "",
+                    IsEnabled = true,
+                    GiftRecordIds = { },
+                    PurchaseRequirements = { },
+                },
+                Refundable = false,
+                MetaInfo = metaData,
+                DisplayAssetPath = type is 1 ? displayAsset : "",
+                ItemGrants = itemGrants,
+                SortPriority = -1,
+                CatalogGroupPriority = 0,
+            };
         }
     }
 }
