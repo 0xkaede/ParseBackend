@@ -1,6 +1,7 @@
 ﻿using Amazon.Runtime.Internal.Transform;
 using CUE4Parse.Utils;
 using Microsoft.AspNetCore.JsonPatch.Operations;
+using Microsoft.Extensions.Hosting;
 using Microsoft.VisualBasic;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -15,8 +16,10 @@ using ParseBackend.Models.Profile;
 using ParseBackend.Models.Profile.Attributes;
 using ParseBackend.Models.Profile.Stats;
 using ParseBackend.Utils;
+using Serilog.Context;
 using System;
 using System.Diagnostics;
+using System.Xml.Linq;
 using static ParseBackend.Global;
 
 namespace ParseBackend.Services
@@ -41,6 +44,9 @@ namespace ParseBackend.Services
         public void UpdateAthenaQuestReRoles(ref AthenaData athenaData, int num);
         public void UpdateAthenaNewDailyQuestsList(ref AthenaData athenaData, Dictionary<string, BaseChallenge> challengeData);
         public void UpdateAthenaQuestLoginTime(ref AthenaData athenaData);
+        public void AddedAthenaItem(ref AthenaData athenaData, AthenaItemsData athenaItem);
+        public void UpdateCommonCoreVbucks(ref CommonCoreData commonCoreData);
+        public void UpdateCommonCoreRvn(ref CommonCoreData commonCoreData);
     }
 
     public class MongoService : IMongoService
@@ -697,6 +703,33 @@ namespace ParseBackend.Services
             athenaData.DailyQuestData.Quests = updateList;
 
             _athenaData.UpdateOne(filter, update);
+        }
+
+        public void AddedAthenaItem(ref AthenaData athenaData, AthenaItemsData athenaItem)
+        {
+            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
+
+            var update = Builders<AthenaData>.Update.Push<AthenaItemsData>(x => x.Items, athenaItem);
+
+            _athenaData.UpdateOne(filter, update);
+        }
+
+        public void UpdateCommonCoreVbucks(ref CommonCoreData commonCoreData)
+        {
+            var filter = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, commonCoreData.AccountId);
+            var update = Builders<CommonCoreData>.Update.Set(x => x.Vbucks, commonCoreData.Vbucks);
+
+            _commonCoreData.UpdateOne(filter, update);
+        }
+
+        public void UpdateCommonCoreRvn(ref CommonCoreData commonCoreData)
+        {
+            var filter = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, commonCoreData.AccountId);
+            var update = Builders<CommonCoreData>.Update.Set(x => x.Rvn, commonCoreData.Rvn + 1);
+
+            commonCoreData.Rvn += 1;
+
+            _commonCoreData.UpdateOne(filter, update);
         }
 
         #endregion

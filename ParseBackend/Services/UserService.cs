@@ -3,6 +3,7 @@ using Newtonsoft.Json.Linq;
 using ParseBackend.Exceptions;
 using ParseBackend.Models.CUE4Parse.Challenges;
 using ParseBackend.Models.Database.Athena;
+using ParseBackend.Models.Database.CommonCore;
 using ParseBackend.Models.Profile;
 using ParseBackend.Models.Profile.Attributes;
 using ParseBackend.Models.Profile.Changes;
@@ -23,6 +24,7 @@ namespace ParseBackend.Services
         public Task<ProfileResponse> SetItemFavoriteStatusBatch(string accountId, SetItemFavoriteStatusBatchRequest body);
         public Task<ProfileResponse> ClientQuestLogin(string accountId);
         public Task<ProfileResponse> SetPartyAssistQuest(string accountId, JObject lazy);
+        public Task<ProfileResponse> PurchaseCatalogEntry(string accountId, PurchaseCatalogEntryRequest body);
     }
 
     public class UserService : IUserService
@@ -264,6 +266,118 @@ namespace ParseBackend.Services
 
             _mongoService.UpdateAthenaRvn(ref athenaData);
             return CreateProfileResponse(ref athenaData, profileChanges);
+        }
+
+        public async Task<ProfileResponse> PurchaseCatalogEntry(string accountId, PurchaseCatalogEntryRequest body)
+        {
+            var athenaData = await _mongoService.FindAthenaByAccountId(accountId);
+            var commonCoreData = await _mongoService.FindCommonCoreByAccountId(accountId);
+
+            var catalog = await _fileProviderService.GetCatalogByOfferId(body.OfferId);
+            if (catalog is null)
+                throw new BaseException("errors.com.epicgames.modules.catalog", $"The offerId \"{body.OfferId}\" could not be found!", 1424, "");
+
+            var profileChanges = new List<object>();
+            var notifications = new List<NotificationsResponse>();
+            var multiUpdateEnded = new List<object>();
+
+            if (catalog.Prices[0].CurrencyType.ToLower() == "mtxcurrency")
+            {
+                bool paid = false;
+
+                if (commonCoreData.Vbucks < catalog.Prices[0].FinalPrice)
+                    throw new BaseException("errors.com.epicgames.currency.mtx.insufficient",
+                        $"You can not afford this item ({catalog.Prices[0].FinalPrice}), you only have {commonCoreData.Vbucks}.", 1458, "");
+
+                commonCoreData.Vbucks -= catalog.Prices[0].FinalPrice;
+                _mongoService.UpdateCommonCoreVbucks(ref commonCoreData);
+
+                profileChanges.Add(JObject.FromObject(new //being lazy
+                {
+                    changeType = "itemQuantityChanged",
+                    itemId = "Currency:MtxPurchased".ComputeSHA256Hash(),
+                    quantity = commonCoreData.Vbucks
+                }));
+
+                paid = true;
+
+                if (!paid && catalog.Prices[0].FinalPrice > 0)
+                    throw new BaseException("errors.com.epicgames.currency.mtx.insufficient", $"You can not afford this item ({catalog.Prices[0].FinalPrice})", 4735, "");
+            }
+
+            notifications.Add(new NotificationsResponse
+            {
+                Type = "CatalogPurchase",
+                Primary = true,
+                NotificationLoots = new List<NotificationLoot>()
+            });
+
+            foreach (var item in catalog.ItemGrants)
+            {
+                _mongoService.AddedAthenaItem(ref athenaData, new AthenaItemsData
+                {
+                    Seen = false,
+                    Amount = item.Quantity,
+                    IsFavorite = false,
+                    ItemId = item.TemplateId,
+                    ItemIdResponse = item.TemplateId.ComputeSHA256Hash(),
+                    Variants = new List<Variant>(), //add later today
+                });
+
+                multiUpdateEnded.Add(new ItemAdded
+                {
+                    Item = new ProfileItem
+                    {
+                        TemplateId = item.TemplateId,
+                        Quantity = item.Quantity,
+                        Attributes = new ItemAttributes
+                        {
+                            ItemSeen = false,
+                            Favorite = false,
+                            Level = -1,
+                            MaxLevelBonus = 0,
+                            RandomSelectionCount = 0,
+                            Variants = new List<Variant>(),
+                            XP = 0,
+                        }
+                    },
+                    ItemId = item.TemplateId.ComputeSHA256Hash(),
+                });
+
+                notifications[0].NotificationLoots.Add(new NotificationLoot()
+                {
+                    ItemType = item.TemplateId,
+                    ItemGuid = item.TemplateId.ComputeSHA256Hash(),
+                    ItemProfile = "athena",
+                    Quantity = 1
+                });
+            }
+
+            _mongoService.UpdateAthenaRvn(ref athenaData);
+            _mongoService.UpdateCommonCoreRvn(ref commonCoreData);
+
+            return new ProfileResponse
+            {
+                ProfileRevision = commonCoreData.Rvn + 1,
+                ProfileId = "common_core",
+                ProfileChangesBaseRevisionRevision = commonCoreData.Rvn,
+                ProfileChanges = profileChanges ?? new List<object>(),
+                ProfileCommandRevision = commonCoreData.Rvn + 1,
+                ServerTime = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.sssZ"),
+                MultiUpdate = new List<ProfileResponse>
+                {
+                    new ProfileResponse
+                    {
+                         ProfileRevision = athenaData.Rvn + 1,
+                         ProfileId = "athena",
+                         ProfileChangesBaseRevisionRevision = athenaData.Rvn,
+                         ProfileChanges = multiUpdateEnded ?? new List<object>(),
+                         ProfileCommandRevision = athenaData.Rvn + 1,
+                    }
+                },
+                Notifications = notifications,
+                ResponseVersion = 1
+            };
         }
     }
 }

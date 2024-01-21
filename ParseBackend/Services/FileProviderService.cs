@@ -31,6 +31,8 @@ namespace ParseBackend.Services
 
         public Task<Dictionary<string, BaseChallenge>> GenerateDailyQuest(List<string> questAssets = null);
         public Task<Catalog> GenerateItemShop();
+
+        public Task<CatalogEntry> GetCatalogByOfferId(string offerId);
     }
 
     public class FileProviderService : IFileProviderService
@@ -160,6 +162,19 @@ namespace ParseBackend.Services
             //need 1 more i thinkg butttttttt i dont have 8.51 installed
 
             return data;
+        }
+
+        public async Task<CatalogEntry> GetCatalogByOfferId(string offerId)
+        {
+            foreach (var dailyStoreFront in Config.DailyStoreFront)
+                if (offerId == dailyStoreFront.ItemIds[0].ComputeSHA256Hash())
+                    return await GenerateCatalogEntry(dailyStoreFront);
+
+            foreach (var weeklyStoreFront in Config.WeeklyStoreFront)
+                if (offerId == weeklyStoreFront.ItemIds[0].ComputeSHA256Hash())
+                    return await GenerateCatalogEntry(weeklyStoreFront, 1);
+
+            return null;
         }
 
         public async Task<Catalog> GenerateItemShop()
