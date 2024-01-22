@@ -13,7 +13,7 @@ NOTE: These are tested versions whitch means if your versions isnt listed there 
 ### Unreal Engine Versions
 
 NOTE: CUE4Parse likes other unreal engine versions then others!
-- Unreal Engine 4.20 `CUE4Parse EGame.GAME_UE4_24`
+- **Unreal Engine 4.20** `CUE4Parse EGame.GAME_UE4_24`
 
 ## Roadmap
 - [ ] Caching
