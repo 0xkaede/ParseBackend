@@ -29,23 +29,21 @@ namespace ParseBackend.Controllers
         [Route("{accountId}/client/{oparation}")]
         public async Task<ActionResult<ProfileResponse>> McpPost([FromQuery] string profileId, [FromQuery] int rvn, string accountId, string oparation)
         {
-            Logger.Log(oparation);
-
             var body = string.Empty;
             using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
                 body = await reader.ReadToEndAsync();
 
-            var response = oparation.ToLower() switch
+            var response = oparation switch
             {
-                "queryprofile" => await _userService.QueryProfile(profileId, accountId),
-                "setmtxplatform" => await _userService.QueryProfile(profileId, accountId),
-                "bulkequipbattleroyalecustomization" => await _userService.QueryProfile(profileId, accountId),
-                "equipbattleroyalecustomization" => await _userService.EquipBattleRoyaleCustomization(accountId, JsonConvert.DeserializeObject<EquipBattleRoyaleCustomizationRequest>(body)!),
-                "markitemseen" => await _userService.MarkItemSeen(accountId, JsonConvert.DeserializeObject<MarkItemSeenRequest>(body)!),
-                "setitemfavoritestatusbatch" => await _userService.SetItemFavoriteStatusBatch(accountId, JsonConvert.DeserializeObject<SetItemFavoriteStatusBatchRequest>(body)!),
-                "clientquestlogin" => await _userService.ClientQuestLogin(accountId),
-                "setpartyassistquest" => await _userService.SetPartyAssistQuest(accountId, JsonConvert.DeserializeObject<JObject>(body)!),
-                "purchasecatalogentry" => await _userService.PurchaseCatalogEntry(accountId, JsonConvert.DeserializeObject<PurchaseCatalogEntryRequest>(body)!),
+                "QueryProfile" => await _userService.QueryProfile(profileId, accountId),
+                "SetMtxPlatform" => await _userService.QueryProfile(profileId, accountId),
+                "BulkEquipBattleRoyaleCustomization" => await _userService.QueryProfile(profileId, accountId),
+                "EquipBattleRoyaleCustomization" => await _userService.EquipBattleRoyaleCustomization(accountId, JsonConvert.DeserializeObject<EquipBattleRoyaleCustomizationRequest>(body)!),
+                "MarkItemSeen" => await _userService.MarkItemSeen(accountId, JsonConvert.DeserializeObject<MarkItemSeenRequest>(body)!),
+                "SetItemFavoriteStatusBatch" => await _userService.SetItemFavoriteStatusBatch(accountId, JsonConvert.DeserializeObject<SetItemFavoriteStatusBatchRequest>(body)!),
+                "ClientQuestLogin" => await _userService.ClientQuestLogin(accountId),
+                "SetPartyAssistQuest" => await _userService.SetPartyAssistQuest(accountId, JsonConvert.DeserializeObject<JObject>(body)!),
+                "PurchaseCatalogEntry" => await _userService.PurchaseCatalogEntry(accountId, JsonConvert.DeserializeObject<PurchaseCatalogEntryRequest>(body)!),
                 _ => throw new BaseException("", $"The action \"{oparation}\" was not found!", 1142, "MCP.Epic.Error")
             };
             
