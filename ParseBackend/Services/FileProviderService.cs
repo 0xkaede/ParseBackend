@@ -42,6 +42,8 @@ namespace ParseBackend.Services
     {
         public static DefaultFileProvider Provider { get; set; }
 
+        private List<string> CosmeticItemsCache = new List<string>();
+
         public FileProviderService()
         {
             try
@@ -78,7 +80,17 @@ namespace ParseBackend.Services
             => Provider.Files.Where(x => x.Key.ToLower().StartsWith(path.ToLower())
             && x.Key.EndsWith(".uasset")).Select(x => x.Key).ToList();
 
-        public List<string> GetAllCosmetics() => GetAssetsFromPath($"FortniteGame/Content/Athena/Items/Cosmetics");
+        public List<string> GetAllCosmetics()
+        {
+            if(CosmeticItemsCache.Count != 0)
+                return CosmeticItemsCache;
+
+            var data = GetAssetsFromPath($"FortniteGame/Content/Athena/Items/Cosmetics");
+
+            CosmeticItemsCache = data;
+
+            return data;
+        }
 
         public async Task<Dictionary<string, BaseChallenge>> GenerateDailyQuest(List<string> questAssets = null)
         {
@@ -212,6 +224,10 @@ namespace ParseBackend.Services
             };
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="data"></param>
         /// <param name="type">0 = Daily, 1 = Weekly Config</param>
         /// <returns></returns>
         private async Task<CatalogEntry> GenerateCatalogEntry(StorefrontConfiguration data, int type = 0)
@@ -322,9 +338,9 @@ namespace ParseBackend.Services
         public async Task<List<Variant>> GetCosmeticsVariants(string itemId)
         {
             var response = new List<Variant>();
-            var cosmetics = GetAllCosmetics();
+            var items = GetAllCosmetics();
 
-            var findItem = cosmetics.FirstOrDefault(x => x.ToLower().Contains(itemId.ToLower()));
+            var findItem = items.FirstOrDefault(x => x.ToLower().Contains(itemId.ToLower()));
 
             if (findItem is null)
                 return new List<Variant>();
@@ -334,7 +350,6 @@ namespace ParseBackend.Services
             if(!itemObject.TryGetValue(out UObject[] itemVariants, "ItemVariants"))
                 return new List<Variant>();
 
-            var poop = "";
             foreach(var variant in itemVariants)
             {
                 variant.TryGetValue(out FGameplayTag variantChannelTag, "VariantChannelTag");
@@ -348,8 +363,6 @@ namespace ParseBackend.Services
                         Owned = new List<string>(),
                     });
                 }
-
-                Logger.Log(variantChannelTag.TagName.PlainText);
 
                 if(variant.TryGetValue(out FStructFallback[] partOptions, "PartOptions"))
                     response.Add(GenerateVariantFromStruct(partOptions, variantChannelTag.GetLastTag()));

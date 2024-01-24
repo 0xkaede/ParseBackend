@@ -1,8 +1,10 @@
 ﻿using Amazon.Runtime.Internal.Transform;
+using CUE4Parse.GameTypes.PUBG.Assets.Exports;
 using CUE4Parse.Utils;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.Extensions.Hosting;
 using Microsoft.VisualBasic;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Newtonsoft.Json;
@@ -13,6 +15,7 @@ using ParseBackend.Models.CUE4Parse.Challenges;
 using ParseBackend.Models.Database;
 using ParseBackend.Models.Database.Athena;
 using ParseBackend.Models.Database.CommonCore;
+using ParseBackend.Models.Database.Other;
 using ParseBackend.Models.Profile;
 using ParseBackend.Models.Profile.Attributes;
 using ParseBackend.Models.Profile.Stats;
@@ -57,6 +60,7 @@ namespace ParseBackend.Services
         private readonly IMongoCollection<UserData> _userProfiles;
         private readonly IMongoCollection<AthenaData> _athenaData;
         private readonly IMongoCollection<CommonCoreData> _commonCoreData;
+        private readonly IMongoCollection<ExchangeCode> _exchangeCodes;
 
         public MongoService(IFileProviderService fileProviderService)
         {
@@ -66,9 +70,10 @@ namespace ParseBackend.Services
 
             var mongoDatabase = client.GetDatabase("ParseBackend");
 
-            _userProfiles = mongoDatabase.GetCollection<UserData>("UserProfiles");
-            _athenaData = mongoDatabase.GetCollection<AthenaData>("AthenaData");
-            _commonCoreData = mongoDatabase.GetCollection<CommonCoreData>("CommonCoreData");
+            _userProfiles = mongoDatabase.GetCollection<UserData>("user_data");
+            _athenaData = mongoDatabase.GetCollection<AthenaData>("athena_data");
+            _commonCoreData = mongoDatabase.GetCollection<CommonCoreData>("common_core_data");
+            _exchangeCodes = mongoDatabase.GetCollection<ExchangeCode>("exchange_codes");
 
             _ = InitDatabase();
         }
@@ -83,7 +88,6 @@ namespace ParseBackend.Services
 
         public async Task InitDatabase()
         {
-            var data = await _fileProviderService.GetCosmeticsVariants("CID_207_Athena_Commando_M_FootballDudeA");
             /*Logger.Log("Database Is Online");
             for(int i = 0; i < 3000; i++)
             {
@@ -91,6 +95,12 @@ namespace ParseBackend.Services
                 await CreateAccount(test, test, test);
             }*/
             //GrantAthenaFullLocker("78bf7fe5e26d454f902cf55c5d54f775");
+            var sw = new Stopwatch();
+            sw.Start();
+            await GrantAthenaFullLockerAsync("65a503ba4c7943e5a8d5281133415ed5");
+            sw.Stop();
+            Logger.Log($"Time taken {sw.Elapsed.TotalSeconds}");
+
             await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
         }
 
@@ -120,14 +130,14 @@ namespace ParseBackend.Services
 
         public async Task<UserData> FindUserByAccountId(string accountId)
         {
-            var users = await GetAllUserProfiles();
-            return users.FirstOrDefault(x => x.AccountId == accountId);
+            var user = await _userProfiles.FindAsync(x => x.AccountId == accountId);
+            return user.First();
         }
 
         public async Task<AthenaData> FindAthenaByAccountId(string accountId)
         {
-            var users = await GetAllUserAthenaProfiles();
-            return users.FirstOrDefault(x => x.AccountId == accountId);
+            var users = await _athenaData.FindAsync(x => x.AccountId == accountId);
+            return users.First();
         }
 
         public async Task<CommonCoreData> FindCommonCoreByAccountId(string accountId)
@@ -281,7 +291,7 @@ namespace ParseBackend.Services
             return emailCheck;
         }
 
-        public void GrantAthenaFullLocker(string accountId)
+        public async Task GrantAthenaFullLockerAsync(string accountId)
         {
             var itemsToGrant = new List<AthenaItemsData>();
             var itemsFromFile = _fileProviderService.GetAllCosmetics();
@@ -294,6 +304,8 @@ namespace ParseBackend.Services
                 var itemFixed = FixCosmetic(itemRaw, itemToLower);
                 if (itemFixed == null) continue;
 
+                var variant = await _fileProviderService.GetCosmeticsVariants(item.SubstringBefore("."));
+
                 itemsToGrant.Add(new AthenaItemsData
                 {
                     Amount = 1,
@@ -301,6 +313,7 @@ namespace ParseBackend.Services
                     IsFavorite = false,
                     ItemId = itemFixed,
                     ItemIdResponse = itemFixed.ComputeSHA256Hash(),
+                    Variants = variant
                 });
             }
 
@@ -343,7 +356,6 @@ namespace ParseBackend.Services
                 return null;
             }
         }
-
         #endregion
 
         #region FortniteProfileCreate
@@ -747,5 +759,33 @@ namespace ParseBackend.Services
         }
 
         #endregion
+
+        public async Task<string> CreateExchangeCode(string accountId)
+        {
+            var code = RandomString(6);
+
+            await _exchangeCodes.InsertOneAsync(new ExchangeCode
+            {
+                AccountId = accountId,
+                Code = code,
+                DateCreated = DateTime.Now,
+            });
+
+            return code;
+        }
+
+        public async Task<string> FindExchangeCode(string accountId)
+        {
+            var code = RandomString(6);
+
+            await _exchangeCodes.InsertOneAsync(new ExchangeCode
+            {
+                AccountId = accountId,
+                Code = code,
+                DateCreated = DateTime.Now,
+            });
+
+            return code;
+        }
     }
 }
