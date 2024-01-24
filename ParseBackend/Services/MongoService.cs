@@ -52,6 +52,8 @@ namespace ParseBackend.Services
         public void AddedAthenaItem(ref AthenaData athenaData, AthenaItemsData athenaItem);
         public void UpdateCommonCoreVbucks(ref CommonCoreData commonCoreData);
         public void UpdateCommonCoreRvn(ref CommonCoreData commonCoreData);
+
+        public Task<string> FindExchangeCode(string code);
     }
 
     public class MongoService : IMongoService
@@ -142,8 +144,8 @@ namespace ParseBackend.Services
 
         public async Task<CommonCoreData> FindCommonCoreByAccountId(string accountId)
         {
-            var users = await GetAllUserCommonCoreProfiles();
-            return users.FirstOrDefault(x => x.AccountId == accountId);
+            var users = await _commonCoreData.FindAsync(x => x.AccountId == accountId);
+            return users.First();
         }
 
         #endregion
@@ -280,14 +282,14 @@ namespace ParseBackend.Services
         public async Task<UserData> LoginAccount(string email, string password)
         {
             var users = await GetAllUserProfiles();
-            Logger.Log("test1");
+
             var emailCheck = users.FirstOrDefault(x => x.Email == email);
             if (email is null)
                 throw new BaseException("", "Email wasnt found", 1008, "");
-            Logger.Log("test2");
+
             if (emailCheck.Password != password.ComputeSHA256Hash())
                 throw new BaseException("", "Password is wrong, Please try again!", 1008, "");
-            Logger.Log("test4");
+
             return emailCheck;
         }
 
@@ -774,18 +776,15 @@ namespace ParseBackend.Services
             return code;
         }
 
-        public async Task<string> FindExchangeCode(string accountId)
+        public async Task<string> FindExchangeCode(string code)
         {
-            var code = RandomString(6);
+            var exchangeFind = await _exchangeCodes.FindAsync(x => x.Code == code);
+            var exchangeData = exchangeFind.First();
 
-            await _exchangeCodes.InsertOneAsync(new ExchangeCode
-            {
-                AccountId = accountId,
-                Code = code,
-                DateCreated = DateTime.Now,
-            });
+            if (exchangeData.DateCreated.AddMinutes(5) < DateTime.Now)
+                throw new BaseException("", "Sorry the exchange code you supplied was not found. It is possible that it was no longer valid", 1315, "");
 
-            return code;
+            return exchangeData.AccountId;
         }
     }
 }

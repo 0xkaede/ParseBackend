@@ -47,8 +47,14 @@ namespace ParseBackend.Controllers
 
                         break;
                     };
-                case "client_credentials":
+                case "exchange_code":
                     {
+                        var code = form["code"].ToString();
+
+                        var accountId = await _mongoService.FindExchangeCode(code);
+
+                        accountData = await _mongoService.FindUserByAccountId(accountId);
+
                         break;
                     }
                 default:
