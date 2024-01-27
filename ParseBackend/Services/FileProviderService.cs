@@ -24,6 +24,7 @@ using ParseBackend.Models.Other;
 using CUE4Parse.GameTypes.PUBG.Assets.Exports;
 using ParseBackend.Models.Profile.Attributes;
 using CUE4Parse.UE4.Objects.GameplayTags;
+using Microsoft.VisualBasic;
 
 namespace ParseBackend.Services
 {
@@ -363,12 +364,20 @@ namespace ParseBackend.Services
                         Owned = new List<string>(),
                     });
                 }
+                var variantTypes = new List<string>() //idk i just searched for "UFortCosmeticVariantBackedByArray" in sdk
+                {
+                    "PartOptions",
+                    "MaterialOptions",
+                    "DynamicOptions",
+                    "GenericTagOptions",
+                    "LoadoutAugmentations",
+                    "ParticleOptions",
+                    "MeshOptions",
+                };
 
-                if(variant.TryGetValue(out FStructFallback[] partOptions, "PartOptions"))
-                    response.Add(GenerateVariantFromStruct(partOptions, variantChannelTag.GetLastTag()));
-
-                if (variant.TryGetValue(out FStructFallback[] materialOptions, "MaterialOptions"))
-                    response.Add(GenerateVariantFromStruct(materialOptions, variantChannelTag.GetLastTag()));
+                foreach (var type in variantTypes)
+                    if (variant.TryGetValue(out FStructFallback[] options, type))
+                        response.Add(GenerateVariantFromStruct(options, variantChannelTag.GetLastTag()));
             }
 
             return response;
