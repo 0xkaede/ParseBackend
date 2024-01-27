@@ -19,7 +19,7 @@ namespace ParseBackend.Controllers
         [HttpGet]
         public async Task<ActionResult<List<AccountPublicResponse>>> AccountReturn([FromQuery] string accountId)
         {
-            ContextUtils.VerifyToken(HttpContext);
+            //ContextUtils.VerifyToken(HttpContext);
 
             var data = await _mongoService.FindUserByAccountId(accountId);
 
@@ -37,7 +37,7 @@ namespace ParseBackend.Controllers
         [Route("{accountId}")]
         public async Task<ActionResult<AccountInfoResponse>> AccountInfoData(string accountId)
         {
-            ContextUtils.VerifyToken(HttpContext);
+            //ContextUtils.VerifyToken(HttpContext);
 
             var accountInfo = await _mongoService.FindUserByAccountId(accountId);
             return new AccountInfoResponse
@@ -72,7 +72,7 @@ namespace ParseBackend.Controllers
         [Route("displayName/{displayName}")]
         public async Task<ActionResult<AccountPublicResponse>> GetUserDisplayName(string displayName)
         {
-            var data = await _mongoService.FindUserByAccountId(displayName);
+            var data = await _mongoService.FindUserByAccountName(displayName);
 
             return new AccountPublicResponse
             {

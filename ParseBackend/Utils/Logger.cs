@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel;
+using System.Diagnostics;
+using System.Drawing;
 
 namespace ParseBackend.Utils
 {
@@ -6,7 +8,7 @@ namespace ParseBackend.Utils
     {
         public static void Log(string message, LogLevel level = LogLevel.Info)
         {
-            Console.Write($"[{DateTime.Now.ToString("H:m:s")}] ");
+            Console.Write($"[{DateTime.Now.ToString("H:m:s")}]");
             Console.Write("[");
 
             Console.ForegroundColor = level switch
@@ -14,6 +16,7 @@ namespace ParseBackend.Utils
                 LogLevel.Info => ConsoleColor.Cyan,
                 LogLevel.Error => ConsoleColor.Red,
                 LogLevel.CUE4Parse => ConsoleColor.Magenta,
+                LogLevel.Xmpp => ConsoleColor.DarkYellow
             };
 
             Console.Write(level.GetDescription());
@@ -47,5 +50,7 @@ namespace ParseBackend.Utils
         [Description("CUE4")] CUE4Parse,
 
         [Description("ERORR")] Error,
+
+        [Description("XMPP")] Xmpp,
     }
 }

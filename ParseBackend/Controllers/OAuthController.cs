@@ -43,6 +43,8 @@ namespace ParseBackend.Controllers
                         if (username is null || password is null)
                             throw new InvalidCredentialsException();
 
+                        
+
                         accountData = await _mongoService.LoginAccount(username, password);
 
                         break;
@@ -57,6 +59,8 @@ namespace ParseBackend.Controllers
 
                         break;
                     }
+                case "client_credentials":
+                    break;
                 default:
                     {
                         throw new BaseException("errors.com.epicgames.common.oauth.unsupported_grant_type", $"Unsupported grant type: {form["grant_type"]}", 400, "");
@@ -82,8 +86,6 @@ namespace ParseBackend.Controllers
             var deviceId = CreateUuid();
             var accessToken = TokenCreate.CreateAccess(ref accountData, clientId[0], form["grant_type"].ToString(), deviceId, 8);
             var refreshToken = TokenCreate.CreateRefresh(ref accountData, clientId[0], form["grant_type"].ToString(), deviceId, 24);
-
-            //await Utils.UpdateTokens(); soon
 
             var decodedAccess = JsonConvert.DeserializeObject<AccessToken>(JWT.Decode(accessToken));
             var decodedRefresh = JsonConvert.DeserializeObject<RefreshToken>(JWT.Decode(refreshToken));

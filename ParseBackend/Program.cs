@@ -1,18 +1,27 @@
+using CUE4Parse.UE4.Objects.UObject;
 using ParseBackend;
 using ParseBackend.Utils;
+using ParseBackend.Xmpp;
+using System.IO;
 
 namespace KaedeBackend.Exceptions
 {
     public class Program
     {
-        public static void Main(string[] args)
-            => CreateHostBuilder(args).Build().Run();
+        public static async Task Main(string[] args)
+        {
+            var host = CreateHostBuilder(args).Build();
+
+            await Task.WhenAny(
+                host.RunAsync()
+            );
+        }
 
         public static IHostBuilder CreateHostBuilder(string[] args)
             => Host.CreateDefaultBuilder(args)
                 .ConfigureLogging(logging =>
                 {
-                    logging.ClearProviders();
+                    
                 })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
@@ -21,6 +30,7 @@ namespace KaedeBackend.Exceptions
 
                     Logger.Log($"Parse Backend, A universal fortnite backend!");
                     Logger.Log($"Backend Created by 0xkaede");
+                    Logger.Log($"Backend started on port 4010");
                 });
     }
 }

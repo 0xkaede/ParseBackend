@@ -4,6 +4,7 @@ using ParseBackend.Filters;
 using ParseBackend.Services;
 using ParseBackend.Utils;
 using System.Net;
+using static ParseBackend.Global;
 
 namespace ParseBackend
 {
@@ -28,6 +29,8 @@ namespace ParseBackend
             services.AddSingleton<IFileProviderService, FileProviderService>();
             services.AddSingleton<IMongoService, MongoService>();
             services.AddSingleton<IUserService, UserService>();
+            services.AddSingleton<IFriendService, FriendService>();
+            //services.AddSingleton<IWebSocketService, XmppService>();
             //services.AddSingleton<IXmppService, XmppService>();
 
             services.AddHttpContextAccessor();
@@ -44,6 +47,9 @@ namespace ParseBackend
             }
 
             //mongo.Ping();
+            GlobalMongoService = mongo; //very skunky cba stuff
+            GlobalXmppServer = new Xmpp.XmppServer();
+            GlobalXmppServer.StartServer();
 
             app.UseStatusCodePages(async context =>
             {

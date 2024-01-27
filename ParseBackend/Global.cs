@@ -2,8 +2,12 @@
 using CUE4Parse.UE4.Versions;
 using ParseBackend.Enums;
 using ParseBackend.Models.Other;
+using ParseBackend.Models.Xmpp;
+using ParseBackend.Services;
+using ParseBackend;
 using System.Security.Cryptography;
 using System.Text;
+using ParseBackend.Xmpp;
 
 namespace ParseBackend
 {
@@ -84,6 +88,10 @@ namespace ParseBackend
 
         public static string CreateUuid() => Guid.NewGuid().ToString().Replace("-", string.Empty);
         public static string CurrentTime() => DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.sssZ");
+        public static string TimeToString(this DateTime dt) => dt.ToString("yyyy-MM-ddTHH:mm:ss.sssZ");
+
+        public static Dictionary<string, XmppClient> GlobalClients { get; set; } = new();
+        public static List<MUCRoom> GlobalMucRooms { get; set; } = new();
 
         public static string ComputeSHA256Hash(this string input)
         {
@@ -99,6 +107,9 @@ namespace ParseBackend
                 return sb.ToString();
             }
         }
+
+        public static IMongoService GlobalMongoService { get; set; }
+        public static XmppServer GlobalXmppServer { get; set; }
 
         public static readonly string JWT_SECRET = CreateUuid();
 

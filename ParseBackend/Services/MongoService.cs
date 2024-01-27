@@ -9,6 +9,7 @@ using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using ParseBackend.Enums;
 using ParseBackend.Exceptions;
 using ParseBackend.Exceptions.Common;
 using ParseBackend.Models.CUE4Parse.Challenges;
@@ -35,6 +36,9 @@ namespace ParseBackend.Services
         public Task<UserData> FindUserByAccountId(string accountId);
         public Task<AthenaData> FindAthenaByAccountId(string accountId);
         public Task<CommonCoreData> FindCommonCoreByAccountId(string accountId);
+        public Task<FriendsData> FindFriendsByAccountId(string accountId);
+
+        public Task<UserData> FindUserByAccountName(string un);
 
         public Task<Profile> CreateAthenaProfile(string accountId);
         public Task<Profile> CreateCommonCoreProfile(string accountId);
@@ -54,6 +58,10 @@ namespace ParseBackend.Services
         public void UpdateCommonCoreRvn(ref CommonCoreData commonCoreData);
 
         public Task<string> FindExchangeCode(string code);
+
+        public void UpdateFriendsStatus(string accountId, string friendId, FriendsStatus status);
+        public void AddItemToFriends(string accountId, FriendsListData data);
+        public void UpdateFriendsInList(string accountId, string friendId, FriendsListData data);
     }
 
     public class MongoService : IMongoService
@@ -63,6 +71,7 @@ namespace ParseBackend.Services
         private readonly IMongoCollection<AthenaData> _athenaData;
         private readonly IMongoCollection<CommonCoreData> _commonCoreData;
         private readonly IMongoCollection<ExchangeCode> _exchangeCodes;
+        private readonly IMongoCollection<FriendsData> _friendsData;
 
         public MongoService(IFileProviderService fileProviderService)
         {
@@ -76,6 +85,7 @@ namespace ParseBackend.Services
             _athenaData = mongoDatabase.GetCollection<AthenaData>("athena_data");
             _commonCoreData = mongoDatabase.GetCollection<CommonCoreData>("common_core_data");
             _exchangeCodes = mongoDatabase.GetCollection<ExchangeCode>("exchange_codes");
+            _friendsData = mongoDatabase.GetCollection<FriendsData>("friends_data");
 
             _ = InitDatabase();
         }
@@ -97,13 +107,13 @@ namespace ParseBackend.Services
                 await CreateAccount(test, test, test);
             }*/
             //GrantAthenaFullLocker("78bf7fe5e26d454f902cf55c5d54f775");
-            var sw = new Stopwatch();
+            /*var sw = new Stopwatch();
             sw.Start();
             await GrantAthenaFullLockerAsync("65a503ba4c7943e5a8d5281133415ed5");
             sw.Stop();
-            Logger.Log($"Time taken {sw.Elapsed.TotalSeconds}");
+            Logger.Log($"Time taken {sw.Elapsed.TotalSeconds}");*/
 
-            await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
+            await CreateAccount("kaede@fort.dev", "kaede1234", "Kaede2");
         }
 
         private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)
@@ -136,6 +146,12 @@ namespace ParseBackend.Services
             return user.First();
         }
 
+        public async Task<UserData> FindUserByAccountName(string un)
+        {
+            var user = await _userProfiles.FindAsync(x => x.Username == un);
+            return user.First();
+        }
+
         public async Task<AthenaData> FindAthenaByAccountId(string accountId)
         {
             var users = await _athenaData.FindAsync(x => x.AccountId == accountId);
@@ -146,6 +162,12 @@ namespace ParseBackend.Services
         {
             var users = await _commonCoreData.FindAsync(x => x.AccountId == accountId);
             return users.First();
+        }
+
+        public async Task<FriendsData> FindFriendsByAccountId(string accountId)
+        {
+            var user = await _friendsData.FindAsync(x => x.AccountId == accountId);
+            return user.First();
         }
 
         #endregion
@@ -275,6 +297,11 @@ namespace ParseBackend.Services
             await _athenaData.InsertOneAsync(athenaData);
             await _commonCoreData.InsertOneAsync(commonCoreData);
             await _userProfiles.InsertOneAsync(userData);
+            await _friendsData.InsertOneAsync(new FriendsData
+            {
+                AccountId = id,
+                List = new List<FriendsListData>(),
+            });
 
             Logger.Log($"Account Created: {username}");
         }
@@ -785,6 +812,35 @@ namespace ParseBackend.Services
                 throw new BaseException("", "Sorry the exchange code you supplied was not found. It is possible that it was no longer valid", 1315, "");
 
             return exchangeData.AccountId;
+        }
+
+        public async void AddItemToFriends(string accountId, FriendsListData data)
+        {
+            var filter = Builders<FriendsData>.Filter.Eq(x => x.AccountId, accountId);
+
+            var update = Builders<FriendsData>.Update.Push<FriendsListData>(x => x.List, data);
+
+            _friendsData.UpdateOne(filter, update);
+        }
+
+        public void UpdateFriendsStatus(string accountId, string friendId, FriendsStatus status)
+        {
+            var filter = Builders<FriendsData>.Filter.Eq(x => x.AccountId, accountId)
+            & Builders<FriendsData>.Filter.ElemMatch(x => x.List, Builders<FriendsListData>.Filter.Eq(x => x.AccountId, friendId));
+
+            var update = Builders<FriendsData>.Update.Set(x => x.List.FirstMatchingElement().Status, status);
+
+            _friendsData.UpdateOne(filter, update);
+        }
+
+        public void UpdateFriendsInList(string accountId, string friendId, FriendsListData data)
+        {
+            var filter = Builders<FriendsData>.Filter.Eq(x => x.AccountId, accountId)
+            & Builders<FriendsData>.Filter.ElemMatch(x => x.List, Builders<FriendsListData>.Filter.Eq(x => x.AccountId, friendId));
+
+            var update = Builders<FriendsData>.Update.Set(x => x.List.FirstMatchingElement(), data);
+
+            _friendsData.UpdateOne(filter, update);
         }
     }
 }
