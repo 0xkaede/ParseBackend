@@ -8,6 +8,7 @@ using ParseBackend.Models.Content;
 using ParseBackend.Models.Database;
 using ParseBackend.Models.Xmpp;
 using ParseBackend.Utils;
+using Serilog;
 using System;
 using System.Net.Sockets;
 using System.Net.WebSockets;
@@ -22,6 +23,8 @@ namespace ParseBackend.Xmpp
     {
         public void StartServer()
         {
+            FleckLog.LogAction = (level, message, ex) => { };
+
             var server = new WebSocketServer($"ws://0.0.0.0:443"); //credits to elixir.api
             server.Start(s =>
             {

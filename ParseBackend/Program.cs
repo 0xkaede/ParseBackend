@@ -21,7 +21,7 @@ namespace KaedeBackend.Exceptions
             => Host.CreateDefaultBuilder(args)
                 .ConfigureLogging(logging =>
                 {
-                    
+                    logging.ClearProviders();
                 })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
