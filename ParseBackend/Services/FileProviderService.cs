@@ -74,6 +74,8 @@ namespace ParseBackend.Services
 
         private ProviderInfo GetProviderInfo() => Config.FortniteVersions switch
         {
+            FortniteVersions.Version_7_40 => new ProviderInfo(EGame.GAME_UE4_22, "0xF2A0859F249BC9A511B3A8766420C6E943004CF0EAEE5B7CFFDB8F10953E994F"), //buggy af
+            FortniteVersions.Version_8_51 => new ProviderInfo(EGame.GAME_UE4_22, "0x67d061efa8e049f7c62f1c460f14cd5ad7e601c13f3fb66f0fb090b72b721acc"),
             FortniteVersions.Version_11_31 => new ProviderInfo(EGame.GAME_UE4_24, "0x6C51ABA88CA1240A0D14EB94701F6C41FD7799B102E9060D1E6C316993196FDF"),
         };
 
@@ -100,7 +102,9 @@ namespace ParseBackend.Services
 
             if(questAssets is null)
             {
-                var allQuestsList = GetAssetsFromPath("FortniteGame/Content/Athena/Items/Quests/DailyQuests/Quests");
+                var allQuestsList = Config.FortniteSeason >= 11
+                    ? GetAssetsFromPath("FortniteGame/Content/Athena/Items/Quests/DailyQuests/Quests")
+                    : GetAssetsFromPath("FortniteGame/Content/Athena/Items/Quests/DailyQuests");
 
                 var random = new Random();
 

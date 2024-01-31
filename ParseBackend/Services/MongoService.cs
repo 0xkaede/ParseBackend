@@ -113,6 +113,8 @@ namespace ParseBackend.Services
             sw.Stop();
             Logger.Log($"Time taken {sw.Elapsed.TotalSeconds}");*/
 
+            await GrantAthenaFullLockerAsync("9d4d24eed85549ed8989558ef6850320");
+
             await CreateAccount("kaede@fort.dev", "kaede1234", "Kaede2");
         }
 
@@ -327,23 +329,31 @@ namespace ParseBackend.Services
 
             foreach (var item in itemsFromFile)
             {
-                var itemToLower = item.ToLower();
-                var itemRaw = item.SubstringAfterLast("/").SubstringBefore(".");
-
-                var itemFixed = FixCosmetic(itemRaw, itemToLower);
-                if (itemFixed == null) continue;
-
-                var variant = await _fileProviderService.GetCosmeticsVariants(item.SubstringBefore("."));
-
-                itemsToGrant.Add(new AthenaItemsData
+                try
                 {
-                    Amount = 1,
-                    Seen = false,
-                    IsFavorite = false,
-                    ItemId = itemFixed,
-                    ItemIdResponse = itemFixed.ComputeSHA256Hash(),
-                    Variants = variant
-                });
+                    var itemToLower = item.ToLower();
+                    var itemRaw = item.SubstringAfterLast("/").SubstringBefore(".");
+
+                    var itemFixed = FixCosmetic(itemRaw, itemToLower);
+                    if (itemFixed == null) continue;
+
+                    var variant = await _fileProviderService.GetCosmeticsVariants(item.SubstringBefore("."));
+
+                    itemsToGrant.Add(new AthenaItemsData
+                    {
+                        Amount = 1,
+                        Seen = false,
+                        IsFavorite = false,
+                        ItemId = itemFixed,
+                        ItemIdResponse = itemFixed.ComputeSHA256Hash(),
+                        Variants = variant
+                    });
+                }
+                catch
+                {
+                    continue;
+                }
+                
             }
 
             var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, accountId);
