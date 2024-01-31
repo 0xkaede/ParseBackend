@@ -12,6 +12,7 @@ namespace ParseBackend.Services
     {
         public Task<bool> SendFriendRequest(string fromId, string toId);
         public Task<bool> AcceptFriendRequest(string fromId, string toId);
+        public Task<bool> DeleteFriend(string fromId, string toId);
     }
 
     public class FriendService : IFriendService
@@ -183,6 +184,67 @@ namespace ParseBackend.Services
                 _mongoService.UpdateFriendsInList(toId, fromId, toFind);
                 _mongoService.UpdateFriendsInList(fromId, toId, incomingFind);
             }
+
+            return true;
+        }
+
+        public async Task<bool> DeleteFriend(string fromId, string toId)
+        {
+            var fromFriends = await _mongoService.FindFriendsByAccountId(fromId);
+            var toFriends = await _mongoService.FindFriendsByAccountId(toId);
+
+            if (fromFriends == toFriends)
+                return false;
+
+            var findFromFriends = fromFriends.List.Where(x => x.Status != FriendsStatus.Blocked).FirstOrDefault(x => x.AccountId == toFriends.AccountId);
+            var findToFriends = toFriends.List.Where(x => x.Status != FriendsStatus.Blocked).FirstOrDefault(x => x.AccountId == fromFriends.AccountId);
+
+            if (findFromFriends is null)
+                return false;
+
+            fromFriends.List.Remove(findFromFriends);
+
+            if (findToFriends != null)
+                toFriends.List.Remove(findToFriends);
+
+            var fromClient = GlobalXmppServer.FindClientFromAccountId(fromFriends.AccountId);
+            if(fromClient != null)
+            {
+                var payload = new PayLoad<Reason>
+                {
+                    Payload = new Reason
+                    {
+                        AccountId = toId,
+                        Reasoning = "DELETED"
+                    },
+                    Timestamp = CurrentTime(),
+                    Type = "com.epicgames.friends.core.apiobjects.FriendRemoval",
+                };
+                fromClient.SendMessage(JsonConvert.SerializeObject(payload));
+
+                fromClient.GetPresenceFromFriends();
+            }
+
+            var toClient = GlobalXmppServer.FindClientFromAccountId(toFriends.AccountId);
+            if (toClient != null)
+            {
+                var payload = new PayLoad<Reason>
+                {
+                    Payload = new Reason
+                    {
+                        AccountId = fromId,
+                        Reasoning = "DELETED"
+                    },
+                    Timestamp = CurrentTime(),
+                    Type = "com.epicgames.friends.core.apiobjects.FriendRemoval",
+                };
+                toClient.SendMessage(JsonConvert.SerializeObject(payload));
+
+                toClient.GetPresenceFromFriends();
+            }
+
+            _mongoService.UpdateFriendsList(fromId, fromFriends.List);
+            _mongoService.UpdateFriendsList(toId, toFriends.List);
 
             return true;
         }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using ParseBackend.Models.Friends;
 using ParseBackend.Services;
 using static ParseBackend.Global;
@@ -33,7 +34,6 @@ namespace ParseBackend.Controllers
             return Content("[]");
         }
 
-
         [HttpGet]
         [Route("public/friends/{accountId}")]
         public async Task<ActionResult<List<Friend>>> GetFriends(string accountId)
@@ -43,6 +43,24 @@ namespace ParseBackend.Controllers
 
             foreach (var friend in friends.List)
                 res.Add(new Friend(friend));
+
+            return res;
+        }
+
+        [HttpGet]
+        [Route("public/blocklist/{accountId}")]
+        public async Task<ActionResult<JObject>> GetBlocks(string accountId)
+        {
+            var friends = await _mongoService.FindFriendsByAccountId(accountId);
+
+            var blocked = friends.List.Where(x => x.Status is Enums.FriendsStatus.Blocked);
+
+            var list = new List<string>();
+
+            foreach (var friend in blocked)
+                list.Add(friend.AccountId);
+
+            var res = JObject.FromObject(new { blockedUsers = list });
 
             return res;
         }
@@ -111,6 +129,7 @@ namespace ParseBackend.Controllers
         [HttpPost]
         [Route("v1/{accountId}/friends/{receiverId}")]
         [Route("v1/friends/{accountId}/{receiverId}")]
+        [Route("public/friends/{accountId}/{receiverId}")]
         public async Task<ActionResult<string>> PostFriends(string accountId, string receiverId)
         {
             var sender = await _mongoService.FindFriendsByAccountId(accountId);
@@ -123,6 +142,26 @@ namespace ParseBackend.Controllers
             if (sender.List.Where(x => x.Status is Enums.FriendsStatus.Outgoing)
                 .FirstOrDefault(x => x.AccountId == receiver.AccountId) is null)
                 await _friendService.SendFriendRequest(sender.AccountId, receiver.AccountId);
+
+            Response.StatusCode = 403;
+            return "";
+        }
+
+        [HttpDelete]
+        [Route("v1/{accountId}/friends/{receiverId}")]
+        [Route("v1/friends/{accountId}/{receiverId}")]
+        [Route("public/friends/{accountId}/{receiverId}")]
+        public async Task<ActionResult<string>> DeleteFriends(string accountId, string receiverId)
+        {
+            var sender = await _mongoService.FindFriendsByAccountId(accountId);
+            var receiver = await _mongoService.FindFriendsByAccountId(receiverId);
+
+            if(!await _friendService.DeleteFriend(sender.AccountId, receiver.AccountId))
+            {
+                Response.StatusCode = 403;
+                return "";
+            }
+
 
             Response.StatusCode = 403;
             return "";
