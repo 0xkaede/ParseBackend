@@ -44,7 +44,7 @@ namespace ParseBackend.Controllers
             {
                 Id = accountInfo.AccountId,
                 DisplayName = accountInfo.Username,
-                Name = "kaede",
+                Name = "Parse",
                 Email = $"[hidden]{accountInfo.Email.Split("@")[1]}",
                 FailedLoginAttempts = 0,
                 LastLogin = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.sssZ"),
@@ -52,7 +52,7 @@ namespace ParseBackend.Controllers
                 AgeGroup = "UNKNOWN",
                 Headless = false,
                 Country = "US",
-                LastName = "Server",
+                LastName = "Backend",
                 PreferredLanguage = "en",
                 CanUpdateDisplayName = false,
                 TfaEnabled = false,
