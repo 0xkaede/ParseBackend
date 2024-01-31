@@ -15,8 +15,8 @@ namespace ParseBackend
     {
         public static readonly Configuration Config = new Configuration
         {
-            GamePath = "C:\\Users\\jmass\\Desktop\\Fortnite 11.31\\FortniteGame\\Content\\Paks",
-            FortniteVersions = FortniteVersions.Version_11_31,
+            GamePath = "C:\\Users\\jmass\\Desktop\\Fortnite 8.51\\FortniteGame\\Content\\Paks",
+            FortniteVersions = FortniteVersions.Version_8_51,
             WeeklyStoreFront = new List<StorefrontConfiguration>
             {
                 new StorefrontConfiguration
