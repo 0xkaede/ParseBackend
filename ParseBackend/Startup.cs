@@ -39,7 +39,7 @@ namespace ParseBackend
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IMongoService mongo)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IMongoService mongo, IFileProviderService fp)
         {
             if (env.IsDevelopment())
             {
@@ -47,9 +47,12 @@ namespace ParseBackend
             }
 
             mongo.Ping();
+
             GlobalMongoService = mongo; //very skunky cba stuff
             GlobalXmppServer = new Xmpp.XmppServer();
             GlobalXmppServer.StartServer();
+
+            fp.Ping();
 
             app.UseStatusCodePages(async context =>
             {
@@ -62,7 +65,7 @@ namespace ParseBackend
                     _ => json
                 };
 
-                Logger.Log($"Cant find \"{context.HttpContext.Request.Path}\"", Utils.LogLevel.Error);
+                Logger.Log($"Missing [{context.HttpContext.Request.Method}] \"{context.HttpContext.Request.Path}\"", Utils.LogLevel.Error);
                 await context.HttpContext.Response.WriteAsync(json);
             });
 

@@ -121,9 +121,9 @@ namespace ParseBackend.Services
             sw.Stop();
             Logger.Log($"Time taken {sw.Elapsed.TotalSeconds}");*/
 
-            await GrantAthenaFullLockerAsync("9d4d24eed85549ed8989558ef6850320");
+            //await GrantAthenaFullLockerAsync("9d4d24eed85549ed8989558ef6850320");
 
-            await CreateAccount("kaede@fort.dev", "kaede1234", "Kaede2");
+            //await CreateAccount("kaede@fort.dev", "kaede1234", "Kaede2");
         }
 
         private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)

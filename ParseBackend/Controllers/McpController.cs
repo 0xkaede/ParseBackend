@@ -6,6 +6,7 @@ using ParseBackend.Models.Request;
 using ParseBackend.Models.Response;
 using ParseBackend.Services;
 using ParseBackend.Utils;
+using System.Diagnostics;
 using System.Text;
 
 namespace ParseBackend.Controllers
@@ -29,6 +30,9 @@ namespace ParseBackend.Controllers
         [Route("{accountId}/client/{oparation}")]
         public async Task<ActionResult<ProfileResponse>> McpPost([FromQuery] string profileId, [FromQuery] int rvn, string accountId, string oparation)
         {
+            var sw = new Stopwatch();
+            sw.Start();
+
             var body = string.Empty;
             using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
                 body = await reader.ReadToEndAsync();
@@ -46,6 +50,10 @@ namespace ParseBackend.Controllers
                 "PurchaseCatalogEntry" => await _userService.PurchaseCatalogEntry(accountId, JsonConvert.DeserializeObject<PurchaseCatalogEntryRequest>(body)!),
                 _ => throw new BaseException("", $"The action \"{oparation}\" was not found!", 1142, "MCP.Epic.Error")
             };
+
+            sw.Stop();
+
+            Logger.Log($"Did action {oparation} in {sw.ElapsedMilliseconds}ms");
             
             return response;
         }

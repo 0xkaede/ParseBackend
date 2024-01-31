@@ -64,7 +64,6 @@ namespace ParseBackend.Services
 
         public async Task<ProfileResponse> QueryProfile(string type, string accountId)
         {
-            Logger.Log($"{type} : {accountId}");
             var profile = type switch
             {
                 "athena" => await _mongoService.CreateAthenaProfile(accountId),

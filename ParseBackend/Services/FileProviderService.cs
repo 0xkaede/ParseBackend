@@ -30,6 +30,8 @@ namespace ParseBackend.Services
 {
     public interface IFileProviderService
     {
+        public void Ping();
+
         public List<string> GetAllCosmetics();
 
         public Task<Dictionary<string, BaseChallenge>> GenerateDailyQuest(List<string> questAssets = null);
@@ -70,6 +72,10 @@ namespace ParseBackend.Services
             {
                 Logger.Log(ex.ToString(), LogLevel.Error);
             }
+        }
+
+        public void Ping()
+        {
         }
 
         private ProviderInfo GetProviderInfo() => Config.FortniteVersions switch
@@ -368,6 +374,7 @@ namespace ParseBackend.Services
                         Owned = new List<string>(),
                     });
                 }
+
                 var variantTypes = new List<string>() //idk i just searched for "UFortCosmeticVariantBackedByArray" in sdk
                 {
                     "PartOptions",

@@ -43,8 +43,6 @@ namespace ParseBackend.Controllers
                         if (username is null || password is null)
                             throw new InvalidCredentialsException();
 
-                        
-
                         accountData = await _mongoService.LoginAccount(username, password);
 
                         break;
@@ -60,7 +58,21 @@ namespace ParseBackend.Controllers
                         break;
                     }
                 case "client_credentials":
-                    break;
+                    {
+                        /*return new OAuthResponse
+                        {
+                            AccessToken = "parse",
+                            TokenType = "bearer",
+                            ClientId = CreateUuid(),
+                            ClientService = "fortnite",
+                            InternalClient = true,
+                            ExpiresIn = 3600,
+                            ExpiresAt = DateTime.Now.AddHours(1),
+
+                        };*/
+                        return StatusCode(400);
+                        break;
+                    }
                 default:
                     {
                         throw new BaseException("errors.com.epicgames.common.oauth.unsupported_grant_type", $"Unsupported grant type: {form["grant_type"]}", 400, "");
