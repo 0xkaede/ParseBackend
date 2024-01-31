@@ -32,22 +32,22 @@ namespace ParseBackend.Models.Friends
         [JsonProperty("accountId")]
         public string AccountId { get; set; }
 
-        [JsonProperty("groups", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonProperty("groups")]
         public List<object> Groups { get; set; }
 
-        [JsonProperty("mutual", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonProperty("mutual")]
         public int Mutual { get; set; }
 
-        [JsonProperty("alias", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonProperty("alias")]
         public string Alias { get; set; }
 
-        [JsonProperty("note", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonProperty("note")]
         public string Note { get; set; }
 
-        [JsonProperty("favorite", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonProperty("favorite")]
         public bool Favorite { get; set; }
 
-        [JsonProperty("created", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonProperty("created")]
         public string Created { get; set; }
     }
 }

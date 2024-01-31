@@ -33,6 +33,20 @@ namespace ParseBackend.Controllers
             return Content("[]");
         }
 
+
+        [HttpGet]
+        [Route("public/friends/{accountId}")]
+        public async Task<ActionResult<List<Friend>>> GetFriends(string accountId)
+        {
+            var friends = await _mongoService.FindFriendsByAccountId(accountId);
+            var res = new List<Friend>();
+
+            foreach (var friend in friends.List)
+                res.Add(new Friend(friend));
+
+            return res;
+        }
+
         [HttpGet]
         [Route("v1/{accountId}/summary")]
         public async Task<ActionResult<FriendSummary>> GetSummary(string accountId)
@@ -47,6 +61,7 @@ namespace ParseBackend.Controllers
                 {
                     case Enums.FriendsStatus.Accepted:
                         {
+
                             res.Friends.Add(new FriendListSummary
                             {
                                 AccountId = friend.AccountId,
