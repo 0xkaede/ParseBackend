@@ -45,6 +45,9 @@ namespace ParseBackend.Xmpp
                 case "presence":
                     Presence(element);
                     break;
+                case "message":
+                    Message(element);
+                    break;
             }
         }
 
@@ -119,7 +122,7 @@ namespace ParseBackend.Xmpp
                 new XAttribute("to", Jid!),
                 new XAttribute("from", $"xmpp-admin@{Domain}"),
                 new XAttribute("id", CreateUuid()),
-                new XElement("body", message)).ToString());
+                new XElement("body", message)).ToString().Replace(" xmlns=\"\"", ""));
 
         public void SendMessage(string to, string from, string message)
         {
@@ -135,7 +138,6 @@ namespace ParseBackend.Xmpp
 
                 client.Send(Response.ToString().Replace(" xmlns=\"\"", ""));
             }
-
         }
 
 

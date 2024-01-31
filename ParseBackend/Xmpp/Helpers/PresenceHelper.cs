@@ -23,6 +23,8 @@ namespace ParseBackend.Xmpp
 
             if (bHasType)
             {
+                if (data.Attribute("to") == null) return;
+
                 var type = data.Attribute("type")!.Value.ToString();
                 var to = data.Attribute("to")!.Value.ToString();
 
@@ -77,12 +79,12 @@ namespace ParseBackend.Xmpp
                 var room = GlobalMucRooms.FirstOrDefault(x => x.Name == name);
 
                 if (room is null)
-                    GlobalMucRooms.Add(new MUCRoom { Name = name, });
+                    GlobalMucRooms.Add(new MUCRoom { Name = name });
 
                 if (GlobalMucRooms.Find(x => x.MucClients.FindIndex(x => x.Jid!.Split("@")[0] == Jid!.Split("@")[0]) != -1) != null)
                     return;
 
-                room.MucClients.Add(this);
+                GlobalMucRooms.FirstOrDefault(x => x.Name == name)!.MucClients.Add(this);
 
                 Send(new XElement(XNamespace.Get("jabber:client") + "presence",
                     new XAttribute("to", Jid!),
@@ -102,7 +104,9 @@ namespace ParseBackend.Xmpp
                     new XElement("status",
                     new XAttribute("code", "201"))).ToString().Replace(" xmlns=\"\"", ""));
 
-                foreach (var MucClient in room.MucClients)
+
+                var optimize = GlobalMucRooms.FirstOrDefault(x => x.Name == name)!.MucClients;
+                foreach (var MucClient in optimize)
                 {
                     Send(new XElement(XNamespace.Get("jabber:client") + "presence",
                         new XAttribute("from", $"{name}@muc.{MucClient.Domain!}/{MucClient.UserData!.Username}:{MucClient.UserData!.AccountId}:{MucClient.Resource}"),
@@ -127,7 +131,7 @@ namespace ParseBackend.Xmpp
                         new XAttribute("affiliation", "none"))).ToString().Replace(" xmlns=\"\"", ""));
                 }
 
-                GlobalMucRooms.FirstOrDefault(x => x.Name == name).MucClients = room.MucClients;
+                return;
             }
 
             bool bHasStatus = false;
@@ -139,14 +143,14 @@ namespace ParseBackend.Xmpp
             if (!bHasStatus)
                 return;
 
-            var status = data.Elements().FirstOrDefault(x => x.Name.LocalName == "status");
-            if (status is null) return;
+            var statusElement = data.Elements().Where(x => x.Name.LocalName == "status").First();
+            if (statusElement == null) return;
 
-            Status = JsonConvert.DeserializeObject(status.Value.ToString())!;
 
-            var away = data.Elements().ToList().FirstOrDefault(x => x.Name.LocalName == "show");
+            var statusString = statusElement.Value.ToString();
+            Status = JsonConvert.DeserializeObject(statusString);
+            IsAway = data.Elements().ToList().FindIndex(x => x.Name.LocalName == "show") == -1 ? false : true;
 
-            IsAway = away is null ? false : true;
 
             var resg = new XElement(XNamespace.Get("jabber:client") + "presence",
                 new XAttribute("from", Jid!),

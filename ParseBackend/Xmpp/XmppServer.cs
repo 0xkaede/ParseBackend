@@ -1,4 +1,5 @@
 ﻿using Amazon.Auth.AccessControlPolicy;
+using Amazon.Runtime.Internal.Transform;
 using CUE4Parse;
 using Fleck;
 using Jose;
@@ -83,11 +84,11 @@ namespace ParseBackend.Xmpp
                             IsAuthenticated = false
                         };
 
-                        GlobalClients.Add(id, client);
+                        GlobalClients.Add(client.Websocket.ConnectionInfo.Id.ToString(), client);
   
                         connection.Send(new XElement(XNamespace.Get("urn:ietf:params:xml:ns:xmpp-framing") + "open",
                             new XAttribute("from", client.Domain),
-                            new XAttribute("id", id),
+                            new XAttribute("id", client.Websocket.ConnectionInfo.Id),
                             new XAttribute("version", "1.0"),
                             new XAttribute(XNamespace.Get("xml") + "lang", "en")).ToString());
 
