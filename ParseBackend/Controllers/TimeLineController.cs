@@ -41,7 +41,7 @@ namespace ParseBackend.Controllers
                                         },
                                         new ChannelEvent
                                         {
-                                            EventType = $"EventFlag.{Config.FortniteSeason}",
+                                            EventType = $"EventFlag.LobbySeason{Config.FortniteSeason}",
                                             ActiveUntil = "9999-01-01T00:00:00.000Z",
                                             ActiveSince = "2020-01-01T00:00:00.000Z"
                                         }
