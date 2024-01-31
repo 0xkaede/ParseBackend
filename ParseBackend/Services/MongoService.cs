@@ -31,6 +31,8 @@ namespace ParseBackend.Services
 {
     public interface IMongoService
     {
+        public void Ping();
+
         public Task<UserData> LoginAccount(string email, string password);
 
         public Task<UserData> FindUserByAccountId(string accountId);
@@ -62,6 +64,7 @@ namespace ParseBackend.Services
         public void UpdateFriendsStatus(string accountId, string friendId, FriendsStatus status);
         public void AddItemToFriends(string accountId, FriendsListData data);
         public void UpdateFriendsInList(string accountId, string friendId, FriendsListData data);
+        public void UpdateFriendsList(string accountId, List<FriendsListData> data);
     }
 
     public class MongoService : IMongoService
@@ -96,6 +99,11 @@ namespace ParseBackend.Services
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             return new string(Enumerable.Repeat(chars, length)
             .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
+
+        public void Ping()
+        {
+            Logger.Log("Mongodb is online");
         }
 
         public async Task InitDatabase()
@@ -439,6 +447,13 @@ namespace ParseBackend.Services
                         {
                             DailyLoginInterval = DateTime.Now,
                             DailyQuestRerolls = 0
+                        },
+                        PastSeasons = new List<Season>
+                        {
+                            new Season
+                            {
+                                
+                            }
                         }
                     })
                 }
@@ -595,6 +610,12 @@ namespace ParseBackend.Services
                                 RefundsUsed = 0,
                                 RefundCredits = 3,
                                 Purchases = new List<MtxPurchase>()
+                                {
+                                    new MtxPurchase
+                                    {
+                                        
+                                    }
+                                }
                             },
                             MfaEnabled = true,
                             MtxAffiliate = "",
@@ -612,7 +633,7 @@ namespace ParseBackend.Services
                                 AdditionalInfo = "",
                                 CompetitiveBanReason = "None",
                                 ExploitProgramName = ""
-                            }
+                            },
                         })
                     }
                 };
@@ -849,6 +870,15 @@ namespace ParseBackend.Services
             & Builders<FriendsData>.Filter.ElemMatch(x => x.List, Builders<FriendsListData>.Filter.Eq(x => x.AccountId, friendId));
 
             var update = Builders<FriendsData>.Update.Set(x => x.List.FirstMatchingElement(), data);
+
+            _friendsData.UpdateOne(filter, update);
+        }
+
+        public void UpdateFriendsList(string accountId, List<FriendsListData> data)
+        {
+            var filter = Builders<FriendsData>.Filter.Eq(x => x.AccountId, accountId);
+
+            var update = Builders<FriendsData>.Update.Set(x => x.List, data);
 
             _friendsData.UpdateOne(filter, update);
         }

@@ -46,7 +46,7 @@ namespace ParseBackend
                 app.UseDeveloperExceptionPage();
             }
 
-            //mongo.Ping();
+            mongo.Ping();
             GlobalMongoService = mongo; //very skunky cba stuff
             GlobalXmppServer = new Xmpp.XmppServer();
             GlobalXmppServer.StartServer();
