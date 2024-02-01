@@ -76,6 +76,9 @@ namespace ParseBackend.Models.Database.Athena
 
         [BsonElement("battlePassTiers")]
         public int BattlePassTiers { get; set; }
+
+        [BsonElement("questAssist")]
+        public string QuestAssist { get; set; }
     }
 
     public class AthenaCurrentItems

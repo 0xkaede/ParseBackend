@@ -39,6 +39,7 @@ namespace ParseBackend.Services
         public Task<AthenaData> FindAthenaByAccountId(string accountId);
         public Task<CommonCoreData> FindCommonCoreByAccountId(string accountId);
         public Task<FriendsData> FindFriendsByAccountId(string accountId);
+        public Task<MtxAffiliateData> FindSacByCode(string code);
 
         public Task<UserData> FindUserByAccountName(string un);
 
@@ -58,6 +59,8 @@ namespace ParseBackend.Services
         public void AddedAthenaItem(ref AthenaData athenaData, AthenaItemsData athenaItem);
         public void UpdateCommonCoreVbucks(ref CommonCoreData commonCoreData);
         public void UpdateCommonCoreRvn(ref CommonCoreData commonCoreData);
+        public void UpdateSac(ref CommonCoreData commonCoreData, string code);
+        public void UpdateAthenaQuestAssist(ref AthenaData athenaData, string quest);
 
         public Task<string> FindExchangeCode(string code);
 
@@ -67,7 +70,7 @@ namespace ParseBackend.Services
         public void UpdateFriendsList(string accountId, List<FriendsListData> data);
     }
 
-    public class MongoService : IMongoService
+    public partial class MongoService : IMongoService
     {
         private readonly IFileProviderService _fileProviderService;
         private readonly IMongoCollection<UserData> _userProfiles;
@@ -75,6 +78,7 @@ namespace ParseBackend.Services
         private readonly IMongoCollection<CommonCoreData> _commonCoreData;
         private readonly IMongoCollection<ExchangeCode> _exchangeCodes;
         private readonly IMongoCollection<FriendsData> _friendsData;
+        private readonly IMongoCollection<MtxAffiliateData> _mxtAffiliateData;
 
         public MongoService(IFileProviderService fileProviderService)
         {
@@ -89,6 +93,7 @@ namespace ParseBackend.Services
             _commonCoreData = mongoDatabase.GetCollection<CommonCoreData>("common_core_data");
             _exchangeCodes = mongoDatabase.GetCollection<ExchangeCode>("exchange_codes");
             _friendsData = mongoDatabase.GetCollection<FriendsData>("friends_data");
+            _mxtAffiliateData = mongoDatabase.GetCollection<MtxAffiliateData>("sac_data");
 
             _ = InitDatabase();
         }
@@ -121,9 +126,15 @@ namespace ParseBackend.Services
             sw.Stop();
             Logger.Log($"Time taken {sw.Elapsed.TotalSeconds}");*/
 
-            //await GrantAthenaFullLockerAsync("9d4d24eed85549ed8989558ef6850320");
-
-            //await CreateAccount("kaede@fort.dev", "kaede1234", "Kaede2");
+            _mxtAffiliateData.InsertOne(new MtxAffiliateData
+            {
+                AccountId = "b24912453f58465991dbd51ea1a2d6b4",
+                Code = "kaede",
+                Purchaces = 0,
+                VbuckSpent = 0,
+            });
+            await GrantAthenaFullLockerAsync("b24912453f58465991dbd51ea1a2d6b4");
+            await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
         }
 
         private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)
@@ -177,6 +188,12 @@ namespace ParseBackend.Services
         public async Task<FriendsData> FindFriendsByAccountId(string accountId)
         {
             var user = await _friendsData.FindAsync(x => x.AccountId == accountId);
+            return user.First();
+        }
+
+        public async Task<MtxAffiliateData> FindSacByCode(string code)
+        {
+            var user = await _mxtAffiliateData.FindAsync(x => x.Code == code);
             return user.First();
         }
 
@@ -244,6 +261,7 @@ namespace ParseBackend.Services
                     },
                     BattleBoost = 0,
                     BattleBoostFriend = 0,
+                    QuestAssist = ""
                 },
                 CurrentLoadOuts = new List<AthenaLoadOuts> {
                         new AthenaLoadOuts
@@ -301,7 +319,12 @@ namespace ParseBackend.Services
                 Gifts = new List<CommonCoreItems>(),
                 Items = new List<CommonCoreItems>(),
                 Rvn = 0,
-                Vbucks = 0
+                Vbucks = 0,
+                Stats = new CommonCoreDataStats
+                {
+                    MtxAffiliate = "",
+                    MtxAffiliateTime = DateTime.Now
+                }
             };
 
             await _athenaData.InsertOneAsync(athenaData);
@@ -454,7 +477,8 @@ namespace ParseBackend.Services
                             {
                                 
                             }
-                        }
+                        },
+                        PartyAssistQuest = athenaData.Stats.QuestAssist
                     })
                 }
             };
@@ -610,12 +634,6 @@ namespace ParseBackend.Services
                                 RefundsUsed = 0,
                                 RefundCredits = 3,
                                 Purchases = new List<MtxPurchase>()
-                                {
-                                    new MtxPurchase
-                                    {
-                                        
-                                    }
-                                }
                             },
                             MfaEnabled = true,
                             MtxAffiliate = "",
@@ -634,6 +652,8 @@ namespace ParseBackend.Services
                                 CompetitiveBanReason = "None",
                                 ExploitProgramName = ""
                             },
+                            MtxAffiliateId = commonCoreData.Stats.MtxAffiliate,
+                            MtxAffiliateSetTime = commonCoreData.Stats.MtxAffiliateTime
                         })
                     }
                 };
@@ -818,7 +838,33 @@ namespace ParseBackend.Services
             _commonCoreData.UpdateOne(filter, update);
         }
 
+        public void UpdateSac(ref CommonCoreData commonCoreData, string code)
+        {
+            var filter = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, commonCoreData.AccountId);
+            var update = Builders<CommonCoreData>.Update.Set(x => x.Stats.MtxAffiliate, code);
+            var linkedTime = DateTime.Now;
+            var update2 = Builders<CommonCoreData>.Update.Set(x => x.Stats.MtxAffiliateTime, linkedTime);
+
+            commonCoreData.Stats.MtxAffiliate = code;
+            commonCoreData.Stats.MtxAffiliateTime = linkedTime;
+
+            _commonCoreData.UpdateOne(filter, update);
+            _commonCoreData.UpdateOne(filter, update2);
+        }
+
+        public void UpdateAthenaQuestAssist(ref AthenaData athenaData, string quest)
+        {
+            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
+            var update = Builders<AthenaData>.Update.Set(x => x.Stats.QuestAssist, quest);
+
+            athenaData.Stats.QuestAssist = quest;
+
+            _athenaData.UpdateOne(filter, update);
+        }
+
         #endregion
+
+        #region ExchangeCode
 
         public async Task<string> CreateExchangeCode(string accountId)
         {
@@ -845,6 +891,9 @@ namespace ParseBackend.Services
             return exchangeData.AccountId;
         }
 
+        #endregion
+
+        #region Friends
         public async void AddItemToFriends(string accountId, FriendsListData data)
         {
             var filter = Builders<FriendsData>.Filter.Eq(x => x.AccountId, accountId);
@@ -881,6 +930,16 @@ namespace ParseBackend.Services
             var update = Builders<FriendsData>.Update.Set(x => x.List, data);
 
             _friendsData.UpdateOne(filter, update);
+        }
+        #endregion
+
+        public void UpdateSacVbucksByCode(string code, int amount)
+        {
+            var filter = Builders<MtxAffiliateData>.Filter.Eq(x => x.Code, code);
+
+            var update = Builders<MtxAffiliateData>.Update.Set(x => x.VbuckSpent, amount);
+
+            _mxtAffiliateData.UpdateOne(filter, update);
         }
     }
 }

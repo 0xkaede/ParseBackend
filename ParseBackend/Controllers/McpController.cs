@@ -48,6 +48,7 @@ namespace ParseBackend.Controllers
                 "ClientQuestLogin" => await _userService.ClientQuestLogin(accountId),
                 "SetPartyAssistQuest" => await _userService.SetPartyAssistQuest(accountId, JsonConvert.DeserializeObject<JObject>(body)!),
                 "PurchaseCatalogEntry" => await _userService.PurchaseCatalogEntry(accountId, JsonConvert.DeserializeObject<PurchaseCatalogEntryRequest>(body)!),
+                "SetAffiliateName" => await _userService.SetAffiliateName(accountId, JsonConvert.DeserializeObject<JObject>(body)!),
                 _ => throw new BaseException("", $"The action \"{oparation}\" was not found!", 1142, "MCP.Epic.Error")
             };
 

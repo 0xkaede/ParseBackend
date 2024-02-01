@@ -25,6 +25,7 @@ namespace ParseBackend.Services
         public Task<ProfileResponse> ClientQuestLogin(string accountId);
         public Task<ProfileResponse> SetPartyAssistQuest(string accountId, JObject lazy);
         public Task<ProfileResponse> PurchaseCatalogEntry(string accountId, PurchaseCatalogEntryRequest body);
+        public Task<ProfileResponse> SetAffiliateName(string accountId, JObject lazy);
     }
 
     public class UserService : IUserService
@@ -51,6 +52,18 @@ namespace ParseBackend.Services
             };
 
         public ProfileResponse CreateProfileResponse(ref AthenaData profile, List<object> profileChanges = null)
+            => new ProfileResponse
+            {
+                ProfileRevision = profile.Rvn + 1,
+                ProfileId = "athena",
+                ProfileChangesBaseRevisionRevision = profile.Rvn,
+                ProfileChanges = profileChanges ?? new List<object>(),
+                ProfileCommandRevision = profile.Rvn + 1,
+                ServerTime = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.sssZ"),
+                ResponseVersion = 1
+            };
+
+        public ProfileResponse CreateProfileResponse(ref CommonCoreData profile, List<object> profileChanges = null)
             => new ProfileResponse
             {
                 ProfileRevision = profile.Rvn + 1,
@@ -275,10 +288,12 @@ namespace ParseBackend.Services
             var athenaData = await _mongoService.FindAthenaByAccountId(accountId);
             var profileChanges = new List<object>();
 
+            _mongoService.UpdateAthenaQuestAssist(ref athenaData, lazy["questToPinAsPartyAssist"]!.ToString());
+
             profileChanges.Add(new StatModified
             {
                 Name = "party_assist_quest",
-                Value = lazy["questToPinAsPartyAssist"].ToString()
+                Value = athenaData.Stats.QuestAssist
             });
 
             _mongoService.UpdateAthenaRvn(ref athenaData);
@@ -397,6 +412,29 @@ namespace ParseBackend.Services
                 Notifications = notifications,
                 ResponseVersion = 1
             };
+        }
+
+        public async Task<ProfileResponse> SetAffiliateName(string accountId, JObject lazy)
+        {
+            var commonCoreData = await _mongoService.FindCommonCoreByAccountId(accountId);
+            var profileChanges = new List<object>();
+
+            _mongoService.UpdateSac(ref commonCoreData, lazy["affiliateName"]!.ToString());
+
+            profileChanges.Add(new StatModified
+            {
+                Name = "mtx_affiliate_set_time",
+                Value = commonCoreData.Stats.MtxAffiliateTime.TimeToString()
+            });
+
+            profileChanges.Add(new StatModified
+            {
+                Name = "mtx_affiliate",
+                Value = commonCoreData.Stats.MtxAffiliate
+            });
+
+            _mongoService.UpdateCommonCoreRvn(ref commonCoreData);
+            return CreateProfileResponse(ref commonCoreData, profileChanges);
         }
     }
 }
