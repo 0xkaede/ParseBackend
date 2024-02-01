@@ -8,12 +8,14 @@ Parse Backend is a Universal Fortnite Backend using [CUE4Parse](https://github.c
 ### Game Versions
 NOTE: These are tested versions whitch means if your versions isnt listed there is still a chance of it working. If you would like to get your version supported please request it in the [Discord Server](https://discord.gg/yyXFVDwcCB).
 
+- **Chapter 1 Season 8** `++Fortnite+Release-8.51-CL-6165369-Windows`
 - **Chapter 2 Season 1** `++Fortnite+Release-11.31-CL-10800459-Windows`
 
 ### Unreal Engine Versions
 
 NOTE: CUE4Parse likes other unreal engine versions then others!
-- **Unreal Engine 4.20** `CUE4Parse EGame.GAME_UE4_24`
+- **Unreal Engine 4.23** `CUE4Parse EGame.GAME_UE4_22`
+- **Unreal Engine 4.24** `CUE4Parse EGame.GAME_UE4_24`
 
 ## Roadmap
 - [ ] Caching
@@ -21,14 +23,20 @@ NOTE: CUE4Parse likes other unreal engine versions then others!
 - [x] OAuth
 - [x] Item shop with purchacing
 - [x] TimeLine
+- [ ] Stats
 - [x] Permanent Bans
 - [x] Matchmaking Bans (Temp)
 - [x] CloudStorage
 - [x] Daily Challenges
 - [ ] Weekly Challenges
+- [ ] Gifting
+- [ ] Battle Pass
+- [ ] Refunding
+- [ ] SAC
+- [ ] Levels
 - [ ] Challenges claiming rewards
-- [ ] Friends (Adding, Removing, Blocking)
-- [ ] Parties (XMPP)
+- [x] Friends (Blocking Soon)
+- [x] Parties (XMPP)
 - [ ] Matchmaking
 - [ ] Hoster (Depends)
 - [ ] Other Database support
