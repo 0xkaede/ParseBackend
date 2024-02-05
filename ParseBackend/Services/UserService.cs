@@ -120,9 +120,12 @@ namespace ParseBackend.Services
                 foreach(var variantUpdate in body.VariantUpdates)
                 {
                     var bHasStyle = athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == body.ItemToSlot)!.Variants
-                        .FirstOrDefault(x => x.Channel == variantUpdate.Channel)!.Owned.FirstOrDefault(x => x == variantUpdate.Active);
+                        .FirstOrDefault(x => x.Channel == variantUpdate.Channel)!.Owned.FirstOrDefault(x => x == variantUpdate.Active) is null;
 
-                    if (bHasStyle is null)
+                    if (variantUpdate.Channel == "Numeric" || variantUpdate.Channel == "JerseyColor") //skunky but works
+                        bHasStyle = false;
+
+                    if (bHasStyle)
                         continue;
 
                     athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == body.ItemToSlot)!.Variants
