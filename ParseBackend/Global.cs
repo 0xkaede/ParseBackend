@@ -114,5 +114,11 @@ namespace ParseBackend
         public static readonly string JWT_SECRET = CreateUuid();
 
         public static string GetLastTag(this FGameplayTag tag) => tag.TagName.PlainText.Split(".").LastOrDefault()!;
+
+        public static readonly string SetingsPath = $"{Directory.GetCurrentDirectory()}\\ClientSettings\\";
+        public static string GetFortniteSettingsPath(string accountId) => $"{SetingsPath}{accountId}\\ClientSettings{Config.FortniteSeason}.Sav";
+        public static bool DoesFortniteSettingsExist(string accountId) => File.Exists(GetFortniteSettingsPath(accountId));
+        public static async Task<byte[]> ReadFortniteSettings(string accountId) => await File.ReadAllBytesAsync(GetFortniteSettingsPath(accountId));
+        public static void SaveFortniteSettings(string accountId, string arr) => File.WriteAllText(GetFortniteSettingsPath(accountId), arr, Encoding.Latin1);
     }
 }
