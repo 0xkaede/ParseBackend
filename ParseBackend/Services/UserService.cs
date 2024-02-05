@@ -1,5 +1,8 @@
-﻿using MongoDB.Driver;
+﻿using Jose;
+using MongoDB.Driver;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using ParseBackend.Enums;
 using ParseBackend.Exceptions;
 using ParseBackend.Models.CUE4Parse.Challenges;
 using ParseBackend.Models.Database.Athena;
@@ -9,8 +12,11 @@ using ParseBackend.Models.Profile.Attributes;
 using ParseBackend.Models.Profile.Changes;
 using ParseBackend.Models.Request;
 using ParseBackend.Models.Response;
+using ParseBackend.Models.Storefront;
 using ParseBackend.Utils;
+using ParseBackend.Xmpp.Payloads;
 using System;
+using System.Net.WebSockets;
 using System.Security.Authentication;
 using static ParseBackend.Global;
 
@@ -18,6 +24,8 @@ namespace ParseBackend.Services
 {
     public interface IUserService
     {
+        public void SeeRequestData(JObject data);
+
         public Task<ProfileResponse> QueryProfile(string type, string accountId);
         public Task<ProfileResponse> EquipBattleRoyaleCustomization(string accountId, EquipBattleRoyaleCustomizationRequest body);
         public Task<ProfileResponse> MarkItemSeen(string accountId, MarkItemSeenRequest body);
@@ -26,6 +34,8 @@ namespace ParseBackend.Services
         public Task<ProfileResponse> SetPartyAssistQuest(string accountId, JObject lazy);
         public Task<ProfileResponse> PurchaseCatalogEntry(string accountId, PurchaseCatalogEntryRequest body);
         public Task<ProfileResponse> SetAffiliateName(string accountId, JObject lazy);
+        public Task<ProfileResponse> GiftCatalogEntry(string accountId, GiftCatalogEntryRequest body);
+        public Task<ProfileResponse> RemoveGiftBox(string accountId, RemoveGiftBoxResponse body);
     }
 
     public class UserService : IUserService
@@ -37,6 +47,11 @@ namespace ParseBackend.Services
         {
             _mongoService = mongoService;
             _fileProviderService = fileProviderService;
+        }
+
+        public void SeeRequestData(JObject data)
+        {
+            Console.WriteLine(JsonConvert.SerializeObject(data, Formatting.Indented));
         }
 
         public ProfileResponse CreateProfileResponse(ref Profile profile, List<object> profileChanges = null)
@@ -67,7 +82,7 @@ namespace ParseBackend.Services
             => new ProfileResponse
             {
                 ProfileRevision = profile.Rvn + 1,
-                ProfileId = "athena",
+                ProfileId = "common_core",
                 ProfileChangesBaseRevisionRevision = profile.Rvn,
                 ProfileChanges = profileChanges ?? new List<object>(),
                 ProfileCommandRevision = profile.Rvn + 1,
@@ -104,6 +119,12 @@ namespace ParseBackend.Services
             {
                 foreach(var variantUpdate in body.VariantUpdates)
                 {
+                    var bHasStyle = athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == body.ItemToSlot)!.Variants
+                        .FirstOrDefault(x => x.Channel == variantUpdate.Channel)!.Owned.FirstOrDefault(x => x == variantUpdate.Active);
+
+                    if (bHasStyle is null)
+                        continue;
+
                     athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == body.ItemToSlot)!.Variants
                         .FirstOrDefault(x => x.Channel == variantUpdate.Channel)!.Active = variantUpdate.Active;
 
@@ -310,39 +331,19 @@ namespace ParseBackend.Services
                 throw new BaseException("errors.com.epicgames.modules.catalog", $"The offerId \"{body.OfferId}\" could not be found!", 1424, "");
 
             var profileChanges = new List<object>();
-            var notifications = new List<NotificationsResponse>();
+            var notifications = new List<NotificationsResponse>
+            {
+                new NotificationsResponse
+                {
+                    Type = "CatalogPurchase",
+                    Primary = true,
+                    NotificationLoots = new List<NotificationLoot>()
+                }
+            };
+
             var multiUpdateEnded = new List<object>();
 
-            if (catalog.Prices[0].CurrencyType.ToLower() == "mtxcurrency")
-            {
-                bool paid = false;
-
-                if (commonCoreData.Vbucks < catalog.Prices[0].FinalPrice)
-                    throw new BaseException("errors.com.epicgames.currency.mtx.insufficient",
-                        $"You can not afford this item ({catalog.Prices[0].FinalPrice}), you only have {commonCoreData.Vbucks}.", 1458, "");
-
-                commonCoreData.Vbucks -= catalog.Prices[0].FinalPrice;
-                _mongoService.UpdateCommonCoreVbucks(ref commonCoreData);
-
-                profileChanges.Add(JObject.FromObject(new //being lazy
-                {
-                    changeType = "itemQuantityChanged",
-                    itemId = "Currency:MtxPurchased".ComputeSHA256Hash(),
-                    quantity = commonCoreData.Vbucks
-                }));
-
-                paid = true;
-
-                if (!paid && catalog.Prices[0].FinalPrice > 0)
-                    throw new BaseException("errors.com.epicgames.currency.mtx.insufficient", $"You can not afford this item ({catalog.Prices[0].FinalPrice})", 4735, "");
-            }
-
-            notifications.Add(new NotificationsResponse
-            {
-                Type = "CatalogPurchase",
-                Primary = true,
-                NotificationLoots = new List<NotificationLoot>()
-            });
+            catalog.Purchace(ref commonCoreData);
 
             foreach (var item in catalog.ItemGrants)
             {
@@ -387,6 +388,7 @@ namespace ParseBackend.Services
                 });
             }
 
+            _mongoService.UpdateCommonCoreVbucks(ref commonCoreData);
             _mongoService.UpdateAthenaRvn(ref athenaData);
             _mongoService.UpdateCommonCoreRvn(ref commonCoreData);
 
@@ -433,6 +435,176 @@ namespace ParseBackend.Services
                 Value = commonCoreData.Stats.MtxAffiliate
             });
 
+            _mongoService.UpdateCommonCoreRvn(ref commonCoreData);
+            return CreateProfileResponse(ref commonCoreData, profileChanges);
+        }
+
+        public async Task<ProfileResponse> GiftCatalogEntry(string accountId, GiftCatalogEntryRequest body)
+        {
+            var commonCoreData = await _mongoService.FindCommonCoreByAccountId(accountId);
+            var profileChanges = new List<object>();
+
+            body.ValidateRequest(commonCoreData.Stats.GiftRemaining, true);
+
+            var friendsData = await _mongoService.FindFriendsByAccountId(accountId);
+            var friendAccept = friendsData.List.Where(x => x.Status is FriendsStatus.Accepted).ToList();
+
+            foreach (var reciverId in body.ReceiverAccountIds)
+            {
+                var data = friendAccept.FirstOrDefault(x => x.AccountId == reciverId);
+
+                if(data is null)
+                    throw new BaseException("errors.com.epicgames.friends.no_friendship", $"{reciverId} isnt friends with you!", 140537, "");
+            }
+
+            var catalog = await _fileProviderService.GetCatalogByOfferId(body.OfferId);
+            if(catalog is null)
+                throw new BaseException("errors.com.epicgames.catalog.not_found", $"Offer Id \"{body.OfferId}\" was not found!", 18304, "");
+
+            profileChanges = catalog.Purchace(ref commonCoreData, body.ReceiverAccountIds);
+
+            foreach(var reciverId in body.ReceiverAccountIds)
+            {
+                var athena = await _mongoService.FindAthenaByAccountId(reciverId);
+                var common = await _mongoService.FindCommonCoreByAccountId(reciverId);
+
+                if(!common.Stats.ReciveGifts)
+                    throw new BaseException("errors.com.epicgames.gift.gift_disabled", $"User \"{reciverId}\" has gifts disabled!", 30125, "");
+
+                foreach(var item in catalog.ItemGrants)
+                {
+                    var findIt = athena.Items.FirstOrDefault(x => x.ItemId == item.TemplateId);
+
+                    if(findIt != null)
+                        throw new BaseException("errors.com.epicgames.item.owened", $"User \"{reciverId}\" already owns the items!", 13532, "");
+                }
+            }
+
+            foreach (var reciverId in body.ReceiverAccountIds)
+            {
+                var athena = await _mongoService.FindAthenaByAccountId(reciverId);
+                var common = await _mongoService.FindCommonCoreByAccountId(reciverId);
+
+                var giftBoxItemId = CreateUuid();
+                var giftBoxItem = new ProfileItem
+                {
+                    TemplateId = body.GiftWrapTemplateId,
+                    Attributes = new GiftBoxAttribute
+                    {
+                        FromAccountId = accountId,
+                        LootList = new List<GiftBoxLootList>(),
+                        Params = new Dictionary<string, string>
+                        {
+                            {
+                                "userMessage",
+                                body.PersonalMessage
+                            }
+                        },
+                        Level = 1,
+                        GiftedOn = CurrentTime()
+                    },
+                    Quantity = 1,
+                };
+
+                foreach(var item in catalog.ItemGrants)
+                {
+                    var variants = await _fileProviderService.GetCosmeticsVariants(item.TemplateId.Contains(":") ? item.TemplateId.Split(":")[1] : item.TemplateId);
+
+                    var profileItem = new ProfileItem
+                    {
+                        TemplateId = item.TemplateId,
+                        Attributes = new ItemAttributes
+                        {
+                            ItemSeen = false,
+                            Favorite = false,
+                            RandomSelectionCount = 0,
+                            Level = -1,
+                            MaxLevelBonus = 0,
+                            Variants = variants,
+                            XP = 0,
+                        },
+                        Quantity = item.Quantity
+                    };
+
+                    _mongoService.AddedAthenaItem(ref athena, new AthenaItemsData
+                    {
+                        Seen = false,
+                        Amount = item.Quantity,
+                        IsFavorite = false,
+                        ItemId = item.TemplateId,
+                        ItemIdResponse = item.TemplateId.ComputeSHA256Hash(),
+                        Variants = variants,
+                    });
+
+                    var bad = JObject.FromObject(giftBoxItem.Attributes).ToObject<GiftBoxAttribute>();
+
+                    bad.LootList.Add(new GiftBoxLootList
+                    {
+                        ItemType = profileItem.TemplateId,
+                        ItemGuid = giftBoxItemId,
+                        ItemProfile = "athena",
+                        Quantity = 1
+                    });
+
+                    giftBoxItem.Attributes = bad;
+                }
+
+                _mongoService.AddedCommonCoreGift(ref common, new CommonCoreDataGifts
+                {
+                    FromAccountId = accountId,
+                    LootList = catalog.ItemGrants.Select(x => x.TemplateId).ToList(),
+                    TemplateId = body.GiftWrapTemplateId,
+                    TemplateIdHashed = giftBoxItemId,
+                    Time = DateTime.UtcNow,
+                    UserMessage = body.PersonalMessage
+                });
+
+                if(reciverId == accountId)
+                {
+                    profileChanges.Add(new ItemAdded
+                    {
+                        Item = giftBoxItem,
+                        ItemId = giftBoxItemId,
+                    });
+                }
+
+                _mongoService.UpdateCommonCoreRvn(ref common);
+                _mongoService.UpdateAthenaRvn(ref athena);
+
+                var client = GlobalXmppServer.FindClientFromAccountId(reciverId);
+                if(client != null)
+                {
+                    client.SendMessage(JsonConvert.SerializeObject(new PayLoad<object>
+                    {
+                        Payload = new object(),
+                        Timestamp = CurrentTime(),
+                        Type = "com.epicgames.gift.received"
+                    }));
+                }
+            }
+
+            _mongoService.UpdateCommonCoreRvn(ref commonCoreData);
+            return CreateProfileResponse(ref commonCoreData, profileChanges);
+        }
+
+        public async Task<ProfileResponse> RemoveGiftBox(string accountId, RemoveGiftBoxResponse body)
+        {
+            var commonCoreData = await _mongoService.FindCommonCoreByAccountId(accountId);
+            var profileChanges = new List<object>();
+
+            var delete = commonCoreData.Gifts.FirstOrDefault(x => x.TemplateIdHashed == body.GiftBoxItemIds);
+
+            if (delete != null)
+            {
+                commonCoreData.Gifts.Remove(delete);
+
+                profileChanges.Add(new ItemRemoved
+                {
+                    ItemId = body.GiftBoxItemIds,
+                });
+            }
+
+            _mongoService.UpdateCommonCoreGift(accountId, commonCoreData.Gifts);
             _mongoService.UpdateCommonCoreRvn(ref commonCoreData);
             return CreateProfileResponse(ref commonCoreData, profileChanges);
         }

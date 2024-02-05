@@ -1,5 +1,8 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using ParseBackend.Exceptions;
+using ParseBackend.Models.Database.CommonCore;
 
 namespace ParseBackend.Models.Storefront
 {
@@ -85,5 +88,43 @@ namespace ParseBackend.Models.Storefront
 
         [JsonProperty("additionalGrants", NullValueHandling = NullValueHandling.Ignore)]
         public string[] AdditionalGrants { get; set; }
+
+        public int GetPrice() => Prices[0].FinalPrice;
+        public int GetPrice(List<string> data) => Prices[0].FinalPrice * data.Count;
+
+        public bool IsMxtCurrency() => Prices[0].CurrencyType.ToLower() == "mtxcurrency";
+
+        public List<object> Purchace(ref CommonCoreData commonCoreData, List<string> accountsId = null)
+        {
+            var profileChanges = new List<object>();
+
+            if (IsMxtCurrency())
+            {
+                bool paid = false;
+                int price = accountsId is null ? GetPrice() : GetPrice(accountsId);
+
+                if (commonCoreData.Vbucks < price)
+                    throw new BaseException("errors.com.epicgames.currency.mtx.insufficient",
+                    $"You can not afford this item ({price}), you only have {commonCoreData.Vbucks}.", 1458, "");
+
+                commonCoreData.Vbucks -= price;
+
+                profileChanges.Add(JObject.FromObject(new //being lazy
+                {
+                    changeType = "itemQuantityChanged",
+                    itemId = "Currency:MtxPurchased".ComputeSHA256Hash(),
+                    quantity = commonCoreData.Vbucks
+                }));
+
+                paid = true;
+
+                if (!paid && price > 0)
+                    throw new BaseException("errors.com.epicgames.currency.mtx.insufficient", $"You can not afford this item ({price})", 4735, "");
+
+                return profileChanges;
+            }
+
+            return profileChanges;
+        }
     }
 }

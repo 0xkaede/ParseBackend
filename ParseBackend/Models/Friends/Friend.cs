@@ -47,7 +47,7 @@ namespace ParseBackend.Models.Friends
             }
 
             AccountId = data.AccountId;
-            Created = data.Created.TimeToString();
+            Created = data.Created.AddDays(-10).TimeToString();
             Favorite = false;
         }
     }

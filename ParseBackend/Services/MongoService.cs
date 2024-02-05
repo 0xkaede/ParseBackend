@@ -57,6 +57,8 @@ namespace ParseBackend.Services
         public void UpdateAthenaQuestLoginTime(ref AthenaData athenaData);
         public void UpdateAthenaItemVariants(ref AthenaData athenaData, string templateId);
         public void AddedAthenaItem(ref AthenaData athenaData, AthenaItemsData athenaItem);
+        public void AddedCommonCoreGift(ref CommonCoreData commonData, CommonCoreDataGifts item);
+        public void UpdateCommonCoreGift(string accountId, List<CommonCoreDataGifts> data);
         public void UpdateCommonCoreVbucks(ref CommonCoreData commonCoreData);
         public void UpdateCommonCoreRvn(ref CommonCoreData commonCoreData);
         public void UpdateSac(ref CommonCoreData commonCoreData, string code);
@@ -133,8 +135,9 @@ namespace ParseBackend.Services
                 Purchaces = 0,
                 VbuckSpent = 0,
             });
-            await GrantAthenaFullLockerAsync("b24912453f58465991dbd51ea1a2d6b4");
+            //await GrantAthenaFullLockerAsync("b24912453f58465991dbd51ea1a2d6b4");
             await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
+            await CreateAccount("kaede@fort.dev", "kaede1234", "Kaede2");
         }
 
         private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)
@@ -251,8 +254,8 @@ namespace ParseBackend.Services
                     {
                         CurrentSkin = "",
                         CurrentBackbling = "",
-                        CurrentPickaxe = "AthenaPickaxe:DefaultPickaxe",
-                        CurrentGlider = "AthenaGlider:DefaultGlider",
+                        CurrentPickaxe = "AthenaPickaxe:DefaultPickaxe".ComputeSHA256Hash(),
+                        CurrentGlider = "AthenaGlider:DefaultGlider".ComputeSHA256Hash(),
                         CurrentEmotes = new List<string>() { "", "", "", "", "", "" },
                         CurrentWraps = new List<string>() { "", "", "", "", "", "", "" },
                         CurrentLoadingScreen = "",
@@ -272,8 +275,8 @@ namespace ParseBackend.Services
                             {
                                 CurrentSkin = "",
                                 CurrentBackbling = "",
-                                CurrentPickaxe = "AthenaPickaxe:DefaultPickaxe",
-                                CurrentGlider = "AthenaGlider:DefaultGlider",
+                                CurrentPickaxe = "AthenaPickaxe:DefaultPickaxe".ComputeSHA256Hash(),
+                                CurrentGlider = "AthenaGlider:DefaultGlider".ComputeSHA256Hash(),
                                 CurrentEmotes = new List<string>() { "", "", "", "", "", "" },
                                 CurrentWraps = new List<string>() { "", "", "", "", "", "", "" },
                                 CurrentLoadingScreen = "",
@@ -316,15 +319,18 @@ namespace ParseBackend.Services
             {
                 AccountId = id,
                 Created = time,
-                Gifts = new List<CommonCoreItems>(),
+                Gifts = new List<CommonCoreDataGifts>(),
                 Items = new List<CommonCoreItems>(),
                 Rvn = 0,
                 Vbucks = 0,
                 Stats = new CommonCoreDataStats
                 {
                     MtxAffiliate = "",
-                    MtxAffiliateTime = DateTime.Now
-                }
+                    MtxAffiliateTime = DateTime.Now,
+                    GiftRemaining = 5,
+                    LastGiftRefresh = DateTime.Now,
+                    ReciveGifts = true
+                },
             };
 
             await _athenaData.InsertOneAsync(athenaData);
@@ -668,6 +674,50 @@ namespace ParseBackend.Services
                     TemplateId = "Currency:MtxPurchased"
                 });
 
+                if(commonCoreData.Gifts.Count != 0)
+                {
+                    var gifts = commonCoreData.Gifts;
+                    foreach(var gift in gifts)
+                    {
+                        var loot = new List<GiftBoxLootList>();
+
+                        foreach(var item in gift.LootList)
+                        {
+                            var variant = await _fileProviderService.GetCosmeticsVariants(item.Contains(":") ? item.Split(":")[1] : item);
+
+                            loot.Add(new GiftBoxLootList
+                            {
+                                ItemType = item,
+                                ItemGuid = item.ComputeSHA256Hash(),
+                                ItemProfile = "athena",
+                                Quantity = 1
+                            });
+                        }
+
+
+                        commonCore.Items.Add(gift.TemplateIdHashed, new ProfileItem
+                        {
+                            TemplateId = gift.TemplateId,
+                            Attributes = new GiftBoxAttribute
+                            {
+                                FromAccountId = gift.FromAccountId,
+                                GiftedOn = gift.Time.TimeToString(),
+                                Level = 1,
+                                LootList = loot,
+                                Params = new Dictionary<string, string>
+                                {
+                                    {
+                                        "userMessage",
+                                        gift.UserMessage
+                                    }
+                                }
+                            },
+                            Quantity = 1
+                        });
+                    }
+                }
+
+
                 return commonCore;
             }
             catch(Exception ex)
@@ -815,9 +865,27 @@ namespace ParseBackend.Services
         {
             var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
 
-            var update = Builders<AthenaData>.Update.Push<AthenaItemsData>(x => x.Items, athenaItem);
+            var update = Builders<AthenaData>.Update.Push(x => x.Items, athenaItem);
 
             _athenaData.UpdateOne(filter, update);
+        }
+
+        public void AddedCommonCoreGift(ref CommonCoreData commonData, CommonCoreDataGifts item)
+        {
+            var filter = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, commonData.AccountId);
+
+            var update = Builders<CommonCoreData>.Update.Push(x => x.Gifts, item);
+
+            _commonCoreData.UpdateOne(filter, update);
+        }
+
+        public void UpdateCommonCoreGift(string accountId, List<CommonCoreDataGifts> data) //skunky ik
+        {
+            var filter = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, accountId);
+
+            var update = Builders<CommonCoreData>.Update.Set(x => x.Gifts, data);
+
+            _commonCoreData.UpdateOne(filter, update);
         }
 
         public void UpdateCommonCoreVbucks(ref CommonCoreData commonCoreData)

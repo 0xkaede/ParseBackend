@@ -37,6 +37,8 @@ namespace ParseBackend.Controllers
             using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
                 body = await reader.ReadToEndAsync();
 
+            _userService.SeeRequestData(JsonConvert.DeserializeObject<JObject>(body)!);
+
             var response = oparation switch
             {
                 "QueryProfile" => await _userService.QueryProfile(profileId, accountId),
@@ -49,6 +51,8 @@ namespace ParseBackend.Controllers
                 "SetPartyAssistQuest" => await _userService.SetPartyAssistQuest(accountId, JsonConvert.DeserializeObject<JObject>(body)!),
                 "PurchaseCatalogEntry" => await _userService.PurchaseCatalogEntry(accountId, JsonConvert.DeserializeObject<PurchaseCatalogEntryRequest>(body)!),
                 "SetAffiliateName" => await _userService.SetAffiliateName(accountId, JsonConvert.DeserializeObject<JObject>(body)!),
+                "GiftCatalogEntry" => await _userService.GiftCatalogEntry(accountId, JsonConvert.DeserializeObject<GiftCatalogEntryRequest>(body)!),
+                "RemoveGiftBox" => await _userService.RemoveGiftBox(accountId, JsonConvert.DeserializeObject<RemoveGiftBoxResponse>(body)!),
                 _ => throw new BaseException("", $"The action \"{oparation}\" was not found!", 1142, "MCP.Epic.Error")
             };
 
