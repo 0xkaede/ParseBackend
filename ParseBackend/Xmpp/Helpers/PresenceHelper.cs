@@ -1,6 +1,4 @@
-﻿using CUE4Parse;
-using Newtonsoft.Json;
-using ParseBackend.Models.Xmpp;
+﻿using Newtonsoft.Json;
 using System.Xml.Linq;
 using static ParseBackend.Global;
 
@@ -32,18 +30,18 @@ namespace ParseBackend.Xmpp
                 {
                     var name = to.Split("@")[0];
 
-                    var room = GlobalMucRooms.FirstOrDefault(x => x.Name == name);
+                    var room = GlobalMucRooms.FirstOrDefault(x => x.Key == name).Value;
 
                     if (room is null)
                         return;
 
-                    var client = room.MucClients.Find(x => x == this);
+                    var client = room.Find(x => x == this);
                     if (client != null)
-                        room.MucClients.Remove(client);
+                        room.Remove(client);
 
                     Send(new XElement(XNamespace.Get("jabber:client") + "presence",
                         new XAttribute("to", Jid!),
-                        new XAttribute("from", $"{room.Name}@muc.{Domain!}/{UserData.Username}:{UserData.AccountId}:{Resource}"),
+                        new XAttribute("from", $"{name}@muc.{Domain!}/{UserData.Username}:{UserData.AccountId}:{Resource}"),
                         new XAttribute("type", "unavailable"),
                         new XElement(XNamespace.Get("http://jabber.org/protocol/muc#user") + "x"),
                         new XElement("items",
@@ -57,8 +55,8 @@ namespace ParseBackend.Xmpp
                        new XElement("status",
                             new XAttribute("code", "170"))).ToString().Replace(" xmlns=\"\"", ""));
 
-                    if (room.MucClients.Count <= 0)
-                        GlobalMucRooms.Remove(room);
+                    if (room.Count <= 0)
+                        GlobalMucRooms.Remove(name);
 
                     return;
                 }
@@ -76,15 +74,15 @@ namespace ParseBackend.Xmpp
 
                 var name = to.Split("@")[0];
 
-                var room = GlobalMucRooms.FirstOrDefault(x => x.Name == name);
+                var room = GlobalMucRooms.FirstOrDefault(x => x.Key == name).Value;
 
                 if (room is null)
-                    GlobalMucRooms.Add(new MUCRoom { Name = name });
+                    GlobalMucRooms.Add(name, new List<XmppClient>());
 
-                if (GlobalMucRooms.Find(x => x.MucClients.FindIndex(x => x.Jid!.Split("@")[0] == Jid!.Split("@")[0]) != -1) != null)
+                if (GlobalMucRooms.FirstOrDefault(x => x.Value.FindIndex(x => x.Jid!.Split("@")[0] == Jid!.Split("@")[0]) != -1).Value != null)
                     return;
 
-                GlobalMucRooms.FirstOrDefault(x => x.Name == name)!.MucClients.Add(this);
+                GlobalMucRooms.FirstOrDefault(x => x.Key == name)!.Value.Add(this);
 
                 Send(new XElement(XNamespace.Get("jabber:client") + "presence",
                     new XAttribute("to", Jid!),
@@ -105,7 +103,7 @@ namespace ParseBackend.Xmpp
                     new XAttribute("code", "201"))).ToString().Replace(" xmlns=\"\"", ""));
 
 
-                var optimize = GlobalMucRooms.FirstOrDefault(x => x.Name == name)!.MucClients;
+                var optimize = GlobalMucRooms.FirstOrDefault(x => x.Key == name)!.Value;
                 foreach (var MucClient in optimize)
                 {
                     Send(new XElement(XNamespace.Get("jabber:client") + "presence",

@@ -7,6 +7,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="ClientSettings\**" />
+    <Compile Remove="CloudStorage\**" />
+    <Content Remove="ClientSettings\**" />
+    <Content Remove="CloudStorage\**" />
+    <EmbeddedResource Remove="ClientSettings\**" />
+    <EmbeddedResource Remove="CloudStorage\**" />
+    <None Remove="ClientSettings\**" />
+    <None Remove="CloudStorage\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Discord.Net" Version="3.13.0" />
     <PackageReference Include="Fleck" Version="1.2.0" />
     <PackageReference Include="jose-jwt" Version="4.1.0" />
@@ -23,8 +34,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\Content\" />
-    <Folder Include="Models\Storefront\" />
+    <Folder Include="Models\FortniteService\Content\" />
+    <Folder Include="Models\FortniteService\Storefront\" />
   </ItemGroup>
 
 </Project>

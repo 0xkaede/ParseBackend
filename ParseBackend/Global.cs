@@ -1,10 +1,7 @@
 ﻿using CUE4Parse.UE4.Objects.GameplayTags;
-using CUE4Parse.UE4.Versions;
 using ParseBackend.Enums;
 using ParseBackend.Models.Other;
-using ParseBackend.Models.Xmpp;
 using ParseBackend.Services;
-using ParseBackend;
 using System.Security.Cryptography;
 using System.Text;
 using ParseBackend.Xmpp;
@@ -91,7 +88,7 @@ namespace ParseBackend
         public static string TimeToString(this DateTime dt) => dt.ToString("yyyy-MM-ddTHH:mm:ss.sssZ");
 
         public static Dictionary<string, XmppClient> GlobalClients { get; set; } = new();
-        public static List<MUCRoom> GlobalMucRooms { get; set; } = new();
+        public static Dictionary<string, List<XmppClient>> GlobalMucRooms { get; set; } = new();
 
         public static string ComputeSHA256Hash(this string input)
         {

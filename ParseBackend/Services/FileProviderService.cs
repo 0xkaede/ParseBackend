@@ -7,24 +7,24 @@ using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.Encryption.Aes;
 using CUE4Parse.UE4.Versions;
 using ParseBackend.Enums;
-using ParseBackend.Models.Provider;
 using LogLevel = ParseBackend.Utils.LogLevel;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Objects.UObject;
 using CUE4Parse.Utils;
 using CUE4Parse.UE4.Assets.Objects;
-using ParseBackend.Models.CUE4Parse.Challenges;
 using CUE4Parse.UE4.Objects.Core.i18N;
 using CUE4Parse.UE4.Assets.Exports.Engine;
 using System.Net;
 using System.IO.Pipelines;
 using Newtonsoft.Json;
-using ParseBackend.Models.Storefront;
 using ParseBackend.Models.Other;
 using CUE4Parse.GameTypes.PUBG.Assets.Exports;
-using ParseBackend.Models.Profile.Attributes;
 using CUE4Parse.UE4.Objects.GameplayTags;
 using Microsoft.VisualBasic;
+using ParseBackend.Models.FortniteService.Profile.Attributes;
+using ParseBackend.Models.FortniteService.Storefront;
+using ParseBackend.Models.Other.CUE4Parse.Challenges;
+using ParseBackend.Models.Other.CUE4Parse;
 
 namespace ParseBackend.Services
 {

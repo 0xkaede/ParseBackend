@@ -1,19 +1,5 @@
-﻿using Amazon.Auth.AccessControlPolicy;
-using Amazon.Runtime.Internal.Transform;
-using CUE4Parse;
-using Fleck;
-using Jose;
-using Newtonsoft.Json;
-using ParseBackend.Models.Content;
-using ParseBackend.Models.Database;
-using ParseBackend.Models.Xmpp;
+﻿using Fleck;
 using ParseBackend.Utils;
-using Serilog;
-using System;
-using System.Net.Sockets;
-using System.Net.WebSockets;
-using System.Security.Cryptography;
-using System.Text;
 using System.Xml.Linq;
 using static ParseBackend.Global;
 
@@ -51,13 +37,13 @@ namespace ParseBackend.Xmpp
 
             foreach (var room in GlobalMucRooms)
             {
-                if (!room.MucClients.Contains(client))
+                if (!room.Value.Contains(client))
                     continue;
 
-                room.MucClients.Remove(client);
+                room.Value.Remove(client);
 
-                if (room.MucClients.Count <= 0)
-                    GlobalMucRooms.Remove(room);
+                if (room.Value.Count <= 0)
+                    GlobalMucRooms.Remove(id);
             }
 
             GlobalClients.Remove(id);

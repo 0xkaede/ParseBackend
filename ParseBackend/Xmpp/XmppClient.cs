@@ -1,14 +1,6 @@
-﻿using Amazon.Auth.AccessControlPolicy;
-using CUE4Parse;
-using Fleck;
-using Jose;
+﻿using Fleck;
 using Newtonsoft.Json;
-using ParseBackend.Models.Database;
-using ParseBackend.Models.Xmpp;
-using ParseBackend.Utils;
-using System.Net.WebSockets;
-using System.Security.Cryptography;
-using System.Text;
+using ParseBackend.Models.Other.Database;
 using System.Xml.Linq;
 using static ParseBackend.Global;
 
@@ -24,7 +16,7 @@ namespace ParseBackend.Xmpp
         public string? Resource { get; set; }
         public object? Status { get; set; }
         public bool IsAway { get; set; }
-        public List<MUCRoom>? JoinedMucs { get; set; }
+        public Dictionary<string, List<XmppClient>> JoinedMucs { get; set; }
         public string ID => Websocket.ConnectionInfo.Id.ToString();
 
         public void OnMessage(string message)

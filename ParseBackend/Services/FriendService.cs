@@ -1,8 +1,6 @@
-﻿using CUE4Parse;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using ParseBackend.Enums;
-using ParseBackend.Models.Database.Other;
-using ParseBackend.Models.Friends;
+using ParseBackend.Models.Other.Database.Other;
 using ParseBackend.Xmpp.Payloads;
 using static ParseBackend.Global;
 

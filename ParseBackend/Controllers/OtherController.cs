@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ParseBackend.Models.Response;
-using ParseBackend.Models.Response.Affiliate;
+using ParseBackend.Models.Other;
 using ParseBackend.Services;
 
 namespace ParseBackend.Controllers

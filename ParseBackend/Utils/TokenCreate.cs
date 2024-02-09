@@ -1,6 +1,6 @@
 ﻿using Jose;
 using Newtonsoft.Json;
-using ParseBackend.Models.Database;
+using ParseBackend.Models.Other.Database;
 using static ParseBackend.Global;
 
 namespace ParseBackend.Utils

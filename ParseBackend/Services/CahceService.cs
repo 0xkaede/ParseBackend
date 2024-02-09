@@ -1,5 +1,5 @@
-﻿using ParseBackend.Models.Database.Athena;
-using ParseBackend.Models.Database.CommonCore;
+﻿using ParseBackend.Models.Other.Database.Athena;
+using ParseBackend.Models.Other.Database.CommonCore;
 using ParseBackend.Utils;
 
 namespace ParseBackend.Services

@@ -44,12 +44,12 @@ namespace ParseBackend.Xmpp
                     {
                         var to = data.Attribute("to")!.Value.ToString();
                         var name = to.Split("@")[0];
-                        var room = GlobalMucRooms.FirstOrDefault(x => x.Name == name);
+                        var room = GlobalMucRooms.FirstOrDefault(x => x.Key == name).Value;
 
                         if (room is null) 
                             return;
 
-                        foreach(var client in room.MucClients)
+                        foreach(var client in room)
                         {
                             client.Send(new XElement(XNamespace.Get("jabber:client") + "message",
                                 new XAttribute("to", client.Jid!),
