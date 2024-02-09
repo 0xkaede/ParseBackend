@@ -59,6 +59,9 @@ namespace ParseBackend.Models.Database.Athena
         [BsonElement("xp")]
         public int Xp { get; set; }
 
+        [BsonElement("totalXp")]
+        public int TotalXp { get; set; }
+
         [BsonElement("currentItems")]
         public AthenaCurrentItems CurrentItems { get; set; }
 

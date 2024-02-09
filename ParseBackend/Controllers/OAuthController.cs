@@ -1,4 +1,5 @@
-﻿using Jose;
+﻿using CUE4Parse;
+using Jose;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using ParseBackend.Exceptions;
@@ -59,6 +60,8 @@ namespace ParseBackend.Controllers
                     }
                 case "client_credentials":
                     {
+                        var ip = Request.HttpContext.Connection.RemoteIpAddress;
+                        
                         /*return new OAuthResponse
                         {
                             AccessToken = "parse",

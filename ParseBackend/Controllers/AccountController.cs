@@ -7,7 +7,7 @@ namespace ParseBackend.Controllers
 {
     [ApiController]
     [Route("account/api/public/account")]
-    public class AccountController : Controller //might do later on idk
+    public class AccountController : Controller
     {
         private readonly IMongoService _mongoService;
 

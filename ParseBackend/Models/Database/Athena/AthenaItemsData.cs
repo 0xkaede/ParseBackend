@@ -1,5 +1,6 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 using ParseBackend.Models.Profile.Attributes;
+using static ParseBackend.Global;
 
 namespace ParseBackend.Models.Database.Athena
 {

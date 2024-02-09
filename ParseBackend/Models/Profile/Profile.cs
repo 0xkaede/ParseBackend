@@ -1,4 +1,6 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using ParseBackend.Models.Database.Athena;
 
 namespace ParseBackend.Models.Profile
 {
