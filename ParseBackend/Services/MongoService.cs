@@ -1,6 +1,7 @@
 ﻿using Amazon.Runtime.Internal.Transform;
 using CUE4Parse.GameTypes.PUBG.Assets.Exports;
 using CUE4Parse.Utils;
+using Discord;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.Extensions.Hosting;
 using Microsoft.VisualBasic;
@@ -24,6 +25,7 @@ using ParseBackend.Utils;
 using Serilog.Context;
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Xml.Linq;
 using static ParseBackend.Global;
 
@@ -135,7 +137,7 @@ namespace ParseBackend.Services
                 Purchaces = 0,
                 VbuckSpent = 0,
             });
-            //await GrantAthenaFullLockerAsync("b24912453f58465991dbd51ea1a2d6b4");
+            await GrantAthenaFullLockerAsync("d7b0380390094695857e9da7ec29306f");
             await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
             await CreateAccount("kaede@fort.dev", "kaede1234", "Kaede2");
         }
@@ -481,7 +483,6 @@ namespace ParseBackend.Services
                         {
                             new Season
                             {
-                                
                             }
                         },
                         PartyAssistQuest = athenaData.Stats.QuestAssist
@@ -640,6 +641,9 @@ namespace ParseBackend.Services
                                 RefundsUsed = 0,
                                 RefundCredits = 3,
                                 Purchases = new List<MtxPurchase>()
+                                {
+                                    
+                                }
                             },
                             MfaEnabled = true,
                             MtxAffiliate = "",

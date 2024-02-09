@@ -113,7 +113,9 @@ namespace ParseBackend
 
         public static readonly string JWT_SECRET = CreateUuid();
 
-        public static string GetLastTag(this FGameplayTag tag) => tag.TagName.PlainText.Split(".").LastOrDefault()!;
+        public static string GetLastTag(this FGameplayTag tag) => tag.TagName.PlainText.Contains("Cosmetics.Variant.Property.") 
+            ? tag.TagName.PlainText.Split("Cosmetics.Variant.Property.").LastOrDefault()!
+            : tag.TagName.PlainText.Split("Cosmetics.Variant.Channel.").LastOrDefault()!;
 
         public static readonly string SetingsPath = $"{Directory.GetCurrentDirectory()}\\ClientSettings\\";
         public static string GetFortniteSettingsPath(string accountId) => $"{SetingsPath}{accountId}\\ClientSettings{Config.FortniteSeason}.Sav";

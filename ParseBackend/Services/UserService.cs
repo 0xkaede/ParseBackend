@@ -122,7 +122,7 @@ namespace ParseBackend.Services
                     var bHasStyle = athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == body.ItemToSlot)!.Variants
                         .FirstOrDefault(x => x.Channel == variantUpdate.Channel)!.Owned.FirstOrDefault(x => x == variantUpdate.Active) is null;
 
-                    if (variantUpdate.Channel == "Numeric" || variantUpdate.Channel == "JerseyColor") //skunky but works
+                    if (variantUpdate.Channel == "Numeric")
                         bHasStyle = false;
 
                     if (bHasStyle)
@@ -132,14 +132,14 @@ namespace ParseBackend.Services
                         .FirstOrDefault(x => x.Channel == variantUpdate.Channel)!.Active = variantUpdate.Active;
 
                     _mongoService.UpdateAthenaItemVariants(ref athenaData, body.ItemToSlot);
-
-                    profileChanges.Add(new ItemAttrChanged
-                    {
-                        ItemId = body.ItemToSlot,
-                        AttributeName = "variants",
-                        AttributeValue = athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == body.ItemToSlot)!.Variants,
-                    });
                 }
+
+                profileChanges.Add(new ItemAttrChanged
+                {
+                    ItemId = body.ItemToSlot,
+                    AttributeName = "variants",
+                    AttributeValue = athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == body.ItemToSlot)!.Variants,
+                });
             }
 
             _mongoService.EquipAthenaItem(ref athenaData, body.SlotName, body.ItemToSlot, body.IndexWithinSlot);

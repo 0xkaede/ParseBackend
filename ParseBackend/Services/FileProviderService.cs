@@ -192,15 +192,10 @@ namespace ParseBackend.Services
 
         public async Task<CatalogEntry> GetCatalogByOfferId(string offerId)
         {
-            foreach (var dailyStoreFront in Config.DailyStoreFront)
-                if (offerId == dailyStoreFront.ItemIds[0].ComputeSHA256Hash())
-                    return await GenerateCatalogEntry(dailyStoreFront);
+            var shop = Config.DailyStoreFront.FirstOrDefault(x => x.ItemIds[0].ComputeSHA256Hash() == offerId) ??
+                Config.WeeklyStoreFront.FirstOrDefault(x => x.ItemIds[0].ComputeSHA256Hash() == offerId);
 
-            foreach (var weeklyStoreFront in Config.WeeklyStoreFront)
-                if (offerId == weeklyStoreFront.ItemIds[0].ComputeSHA256Hash())
-                    return await GenerateCatalogEntry(weeklyStoreFront, 1);
-
-            return null;
+            return (shop != null ? await GenerateCatalogEntry(shop) : null)!;
         }
 
         public async Task<Catalog> GenerateItemShop()
@@ -415,6 +410,16 @@ namespace ParseBackend.Services
             }
 
             return variant;
+        }
+
+        private async Task<UObject> GetAthenaSeasonUObject()
+            => await Provider.LoadObjectAsync($"FortniteGame/Content/Athena/Items/Seasons/AthenaSeason{Config.FortniteSeason}");
+
+        public async Task<Dictionary<int, int>> GetAthenaXpLevel(int level)
+        {
+            var athenaSeason = await GetAthenaSeasonUObject();
+            // here we will get all data for the athena season so xp, bp, firstwinrewards, challenges ect and cache on start up as its gunna be masive
+            return null;
         }
     }
 }
