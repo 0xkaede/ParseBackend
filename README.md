@@ -3,6 +3,11 @@
 
 Parse Backend is a Universal Fortnite Backend using [CUE4Parse](https://github.com/FabianFG/CUE4Parse) to get data from game files. 
 
+## Project Path expained.
+
+ParseBackend\{folderType}\AccountService - account-public-service-prod.ol.epicgames.com
+ParseBackend\{folderType}\FortniteService - fortnite-public-service-prod.ol.epicgames.com
+
 ## Supported Versions
 
 ### Game Versions
