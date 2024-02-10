@@ -24,8 +24,11 @@ namespace ParseBackend.Services
 
         public async Task<bool> ValidateFriendAdd(string accountId, string friendId)
         {
-            var sender = await _mongoService.FindFriendsByAccountId(accountId);
-            var recever = await _mongoService.FindFriendsByAccountId(friendId);
+            var sendersProfiles = await _mongoService.GetAllProfileData(accountId);
+            var receiverProfiles = await _mongoService.GetAllProfileData(friendId);
+
+            var sender = sendersProfiles.FriendsData;
+            var recever = receiverProfiles.FriendsData;
             if (sender is null || recever is null) return false;
 
             if (sender.List.Where(x => x.Status is FriendsStatus.Accepted).FirstOrDefault(x => x.AccountId == recever.AccountId) != null ||
@@ -43,8 +46,8 @@ namespace ParseBackend.Services
         {
             if (!await ValidateFriendAdd(fromId, toId)) return false;
 
-            var fromFriends = await _mongoService.FindFriendsByAccountId(fromId);
-            var toFriends = await _mongoService.FindFriendsByAccountId(toId);
+            var sendersProfiles = await _mongoService.GetAllProfileData(fromId);
+            var receiverProfiles = await _mongoService.GetAllProfileData(toId);
 
             var outGoingModel = new FriendsListData
             {
@@ -102,9 +105,8 @@ namespace ParseBackend.Services
                 inClient.SendMessage(JsonConvert.SerializeObject(payloadIn));
             }
 
-
-            _mongoService.AddItemToFriends(toId, inCommongModel);
-            _mongoService.AddItemToFriends(fromId, outGoingModel);
+            receiverProfiles.FriendsData.List.Add(inCommongModel);
+            sendersProfiles.FriendsData.List.Add(outGoingModel);
 
             return true;
         }
@@ -113,24 +115,27 @@ namespace ParseBackend.Services
         {
             if (!await ValidateFriendAdd(fromId, toId)) return false;
 
-            var fromFriends = await _mongoService.FindFriendsByAccountId(fromId);
-            var toFriends = await _mongoService.FindFriendsByAccountId(toId);
+            var fromFriends = await _mongoService.GetAllProfileData(fromId);
+            var toFriends = await _mongoService.GetAllProfileData(toId);
 
-            var incomingFind = fromFriends.List.Where(x => x.Status is FriendsStatus.Incoming)
-                .FirstOrDefault(x => x.AccountId == toFriends.AccountId);
+            var incomingFind = fromFriends.FriendsData.List.Where(x => x.Status is FriendsStatus.Incoming)
+                .FirstOrDefault(x => x.AccountId == toFriends.FriendsData.AccountId);
 
-            if(incomingFind != null)
+            if (incomingFind != null)
             {
-                incomingFind.Status = FriendsStatus.Accepted;
-                incomingFind.Created = DateTime.Now;
+                fromFriends.FriendsData.List.Where(x => x.Status is FriendsStatus.Incoming)
+                    .FirstOrDefault(x => x.AccountId == toFriends.FriendsData.AccountId)!.Status = FriendsStatus.Accepted;
+
+                fromFriends.FriendsData.List.Where(x => x.Status is FriendsStatus.Incoming)
+                    .FirstOrDefault(x => x.AccountId == toFriends.FriendsData.AccountId)!.Created = DateTime.Now;
 
                 var client = GlobalXmppServer.FindClientFromAccountId(fromId);
 
                 if(client != null)
                 {
-                    var payload = new PayLoad<Xmpp.Payloads.Friend>
+                    var payload = new PayLoad<Friend>
                     {
-                        Payload = new Xmpp.Payloads.Friend
+                        Payload = new Friend
                         {
                             AccountId = toId,
                             Created = CurrentTime(),
@@ -146,21 +151,24 @@ namespace ParseBackend.Services
                 }
             }
 
-            var toFind = toFriends.List.Where(x => x.Status is FriendsStatus.Outgoing)
+            var toFind = toFriends.FriendsData.List.Where(x => x.Status is FriendsStatus.Outgoing)
                     .FirstOrDefault(x => x.AccountId == fromId);
 
             if (toFind != null)
             {
-                toFind.Status = FriendsStatus.Accepted;
-                toFind.Created = DateTime.Now;
+                toFriends.FriendsData.List.Where(x => x.Status is FriendsStatus.Outgoing)
+                    .FirstOrDefault(x => x.AccountId == fromId)!.Status = FriendsStatus.Accepted;
+
+                toFriends.FriendsData.List.Where(x => x.Status is FriendsStatus.Outgoing)
+                    .FirstOrDefault(x => x.AccountId == fromId)!.Created = DateTime.Now;
 
                 var client = GlobalXmppServer.FindClientFromAccountId(toId);
 
                 if (client != null)
                 {
-                    var payload = new PayLoad<Xmpp.Payloads.Friend>
+                    var payload = new PayLoad<Friend>
                     {
-                        Payload = new Xmpp.Payloads.Friend
+                        Payload = new Friend
                         {
                             AccountId = fromId,
                             Status = "ACCEPTED",
@@ -177,35 +185,29 @@ namespace ParseBackend.Services
                 }
             }
 
-            if(incomingFind != null && toFind != null)
-            {
-                _mongoService.UpdateFriendsInList(toId, fromId, toFind);
-                _mongoService.UpdateFriendsInList(fromId, toId, incomingFind);
-            }
-
             return true;
         }
 
         public async Task<bool> DeleteFriend(string fromId, string toId)
         {
-            var fromFriends = await _mongoService.FindFriendsByAccountId(fromId);
-            var toFriends = await _mongoService.FindFriendsByAccountId(toId);
+            var fromFriends = await _mongoService.GetAllProfileData(fromId);
+            var toFriends = await _mongoService.GetAllProfileData(toId);
 
             if (fromFriends == toFriends)
                 return false;
 
-            var findFromFriends = fromFriends.List.Where(x => x.Status != FriendsStatus.Blocked).FirstOrDefault(x => x.AccountId == toFriends.AccountId);
-            var findToFriends = toFriends.List.Where(x => x.Status != FriendsStatus.Blocked).FirstOrDefault(x => x.AccountId == fromFriends.AccountId);
+            var findFromFriends = fromFriends.FriendsData.List.Where(x => x.Status != FriendsStatus.Blocked).FirstOrDefault(x => x.AccountId == toFriends.FriendsData.AccountId);
+            var findToFriends = toFriends.FriendsData.List.Where(x => x.Status != FriendsStatus.Blocked).FirstOrDefault(x => x.AccountId == fromFriends.FriendsData.AccountId);
 
             if (findFromFriends is null)
                 return false;
 
-            fromFriends.List.Remove(findFromFriends);
+            fromFriends.FriendsData.List.Remove(findFromFriends);
 
             if (findToFriends != null)
-                toFriends.List.Remove(findToFriends);
+                toFriends.FriendsData.List.Remove(findToFriends);
 
-            var fromClient = GlobalXmppServer.FindClientFromAccountId(fromFriends.AccountId);
+            var fromClient = GlobalXmppServer.FindClientFromAccountId(fromFriends.FriendsData.AccountId);
             if(fromClient != null)
             {
                 var payload = new PayLoad<Reason>
@@ -223,7 +225,7 @@ namespace ParseBackend.Services
                 fromClient.GetPresenceFromFriends();
             }
 
-            var toClient = GlobalXmppServer.FindClientFromAccountId(toFriends.AccountId);
+            var toClient = GlobalXmppServer.FindClientFromAccountId(toFriends.FriendsData.AccountId);
             if (toClient != null)
             {
                 var payload = new PayLoad<Reason>
@@ -241,8 +243,6 @@ namespace ParseBackend.Services
                 toClient.GetPresenceFromFriends();
             }
 
-            _mongoService.UpdateFriendsList(fromId, fromFriends.List);
-            _mongoService.UpdateFriendsList(toId, toFriends.List);
 
             return true;
         }

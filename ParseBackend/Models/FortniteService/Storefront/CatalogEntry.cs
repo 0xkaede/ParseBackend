@@ -90,7 +90,7 @@ namespace ParseBackend.Models.FortniteService.Storefront
         public string[] AdditionalGrants { get; set; }
 
         public int GetPrice() => Prices[0].FinalPrice;
-        public int GetPrice(List<string> data) => Prices[0].FinalPrice * data.Count;
+        public int GetPrice(int number) => Prices[0].FinalPrice * number;
 
         public bool IsMxtCurrency() => Prices[0].CurrencyType.ToLower() == "mtxcurrency";
 
@@ -101,7 +101,7 @@ namespace ParseBackend.Models.FortniteService.Storefront
             if (IsMxtCurrency())
             {
                 bool paid = false;
-                int price = accountsId is null ? GetPrice() : GetPrice(accountsId);
+                int price = accountsId is null ? GetPrice() : GetPrice();
 
                 if (commonCoreData.Vbucks < price)
                     throw new BaseException("errors.com.epicgames.currency.mtx.insufficient",

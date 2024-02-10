@@ -34,7 +34,7 @@ namespace ParseBackend.Controllers
                 return null;
             }
 
-            var userData = await _mongoService.FindUserByAccountId(codeInfo.AccountId);
+            var userData = await _mongoService.ReadUserData(codeInfo.AccountId);
 
             return new SlugResponse(codeInfo.Code, userData.Username);
         }

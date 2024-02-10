@@ -55,7 +55,7 @@ namespace ParseBackend.Controllers.AccountService
 
                         var accountId = await _mongoService.FindExchangeCode(code);
 
-                        accountData = await _mongoService.FindUserByAccountId(accountId);
+                        accountData = await _mongoService.ReadUserData(accountId);
 
                         break;
                     }

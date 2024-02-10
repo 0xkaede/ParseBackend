@@ -18,7 +18,7 @@ namespace ParseBackend.Xmpp
             var accountId = split[1];
             var token = split[2];
 
-            UserData = await GlobalMongoService.FindUserByAccountId(accountId);
+            UserData = await GlobalMongoService.ReadUserData(accountId);
 
             var errres = new XElement(XNamespace.Get("urn:ietf:params:xml:ns:xmpp-sasl") + "failure",
                     new XElement("not-authorized",

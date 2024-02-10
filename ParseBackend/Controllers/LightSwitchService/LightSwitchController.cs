@@ -22,7 +22,7 @@ namespace ParseBackend.Controllers.LightSwitchService
         {
             var token = ContextUtils.VerifyToken(HttpContext); // this say user will have a message saying "You have been banned from fortnite"
 
-            var user = await _mongoService.FindUserByAccountId(token.Iai);
+            var user = await _mongoService.ReadUserData(token.Iai);
 
             return new FortniteStatus
             {
@@ -48,7 +48,7 @@ namespace ParseBackend.Controllers.LightSwitchService
         {
             var token = ContextUtils.VerifyToken(HttpContext); // this say user will have a message saying "You have been banned from fortnite"
 
-            var user = await _mongoService.FindUserByAccountId(token.Iai);
+            var user = await _mongoService.ReadUserData(token.Iai);
 
             return new List<FortniteStatus>()
             {

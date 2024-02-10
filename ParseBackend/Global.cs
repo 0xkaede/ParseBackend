@@ -5,6 +5,7 @@ using ParseBackend.Services;
 using System.Security.Cryptography;
 using System.Text;
 using ParseBackend.Xmpp;
+using ParseBackend.Models.Other.Cache;
 
 namespace ParseBackend
 {
@@ -107,6 +108,7 @@ namespace ParseBackend
 
         public static IMongoService GlobalMongoService { get; set; }
         public static XmppServer GlobalXmppServer { get; set; }
+        public static Dictionary<string, ProfileCache> GlobalCacheProfiles = new Dictionary<string, ProfileCache>();
 
         public static readonly string JWT_SECRET = CreateUuid();
 

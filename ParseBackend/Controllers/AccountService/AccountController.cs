@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using ParseBackend.Enums.Other;
 using ParseBackend.Models.AccountService;
 using ParseBackend.Services;
 using ParseBackend.Utils;
@@ -21,7 +22,7 @@ namespace ParseBackend.Controllers.AccountService
         {
             //ContextUtils.VerifyToken(HttpContext);
 
-            var data = await _mongoService.FindUserByAccountId(accountId);
+            var data = await _mongoService.ReadUserData(accountId);
 
             return new List<AccountInfoPublic>()
             {
@@ -39,7 +40,8 @@ namespace ParseBackend.Controllers.AccountService
         {
             //ContextUtils.VerifyToken(HttpContext);
 
-            var accountInfo = await _mongoService.FindUserByAccountId(accountId);
+            var accountInfo = await _mongoService.ReadUserData(accountId);
+            
             return new AccountInfo
             {
                 Id = accountInfo.AccountId,
@@ -72,7 +74,7 @@ namespace ParseBackend.Controllers.AccountService
         [Route("displayName/{displayName}")]
         public async Task<ActionResult<AccountInfoPublic>> GetUserDisplayName(string displayName)
         {
-            var data = await _mongoService.FindUserByAccountName(displayName);
+            var data = await _mongoService.ReadUserData(displayName, DatabaseSearchType.Username);
 
             return new AccountInfoPublic
             {

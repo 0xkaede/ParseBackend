@@ -1,4 +1,5 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
+using ParseBackend.Models.FortniteService.Profile;
 
 namespace ParseBackend.Models.Other.Database
 {

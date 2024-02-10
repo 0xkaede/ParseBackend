@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using ParseBackend.Models.FortniteService.Profile.Changes;
 
 namespace ParseBackend.Models.FortniteService.Profile
 {
@@ -33,6 +34,26 @@ namespace ParseBackend.Models.FortniteService.Profile
 
         [JsonProperty("commandRevision")]
         public int CommandRevision { get; set; }
+
+        public ProfileResponse QueryProfile()
+        {
+            return new ProfileResponse
+            {
+                ProfileRevision = Revision + 1,
+                ProfileId = "athena",
+                ProfileChangesBaseRevisionRevision = Revision,
+                ProfileChanges = new List<object>()
+                {
+                    new FullProfileUpdate
+                    {
+                        Profile = this
+                    }
+                },
+                ProfileCommandRevision = Revision + 1,
+                ServerTime = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.sssZ"),
+                ResponseVersion = 1
+            };
+        }
     }
 
     public class ProfileStats

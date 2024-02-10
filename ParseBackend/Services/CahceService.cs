@@ -1,31 +1,36 @@
 ﻿using ParseBackend.Models.Other.Database.Athena;
-using ParseBackend.Models.Other.Database.CommonCore;
-using ParseBackend.Utils;
+using static ParseBackend.Global;
 
 namespace ParseBackend.Services
 {
     public interface ICahceService
     {
-
+        public Task Loop();
     }
 
-    public class CahceService : ICahceService //cba rn do later on
+    public class CahceService : ICahceService
     {
-        public Dictionary<string, AthenaData> AthenaDataGlobal { get; set; } = new Dictionary<string, AthenaData>();
-        public Dictionary<string, CommonCoreData> CommonCoreDataGlobal { get; set; } = new Dictionary<string, CommonCoreData>();
+        private readonly IMongoService _mongoService;
 
-        public AthenaData GetAthenaUser(string accountId)
+        public CahceService(IMongoService mongoService)
         {
-            var athena = AthenaDataGlobal[accountId];
-
-            Logger.Log(athena is null ? "No user found in cache" : "User found in cache");
-
-            return athena is null ? null : athena;
+            _mongoService = mongoService;
         }
 
-        public void SaveAthenaUser(string accountId, AthenaData athenaData)
+        public async Task Loop()
         {
-            AthenaDataGlobal[accountId] = athenaData;
+            while (true)
+            {
+                var datetime = DateTime.Now;
+                await Task.Delay(15000); // wait 10m
+
+                foreach (var profile in GlobalCacheProfiles)
+                    if (profile.Value.LastChanges < datetime)
+                    {
+                        _mongoService.SaveAllProfileData(profile.Key, profile.Value);
+                        GlobalCacheProfiles.Remove(profile.Key);
+                    }
+            }
         }
     }
 }

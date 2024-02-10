@@ -38,7 +38,7 @@ namespace ParseBackend.Controllers.FriendService
         [Route("public/friends/{accountId}")]
         public async Task<ActionResult<List<FriendOld>>> GetFriends(string accountId)
         {
-            var friends = await _mongoService.FindFriendsByAccountId(accountId);
+            var friends = await _mongoService.ReadFriendsData(accountId);
             var res = new List<FriendOld>();
 
             foreach (var friend in friends.List)
@@ -51,9 +51,8 @@ namespace ParseBackend.Controllers.FriendService
         [Route("public/blocklist/{accountId}")]
         public async Task<ActionResult<JObject>> GetBlocks(string accountId)
         {
-            var friends = await _mongoService.FindFriendsByAccountId(accountId);
-
-            var blocked = friends.List.Where(x => x.Status is Enums.FriendsStatus.Blocked);
+            var profiles = await _mongoService.GetAllProfileData(accountId);
+            var blocked = profiles.FriendsData.List.Where(x => x.Status is Enums.FriendsStatus.Blocked);
 
             var list = new List<string>();
 
@@ -71,7 +70,7 @@ namespace ParseBackend.Controllers.FriendService
         {
             var res = new FriendSummary();
 
-            var friends = await _mongoService.FindFriendsByAccountId(accountId);
+            //var friends = await _mongoService.FindFriendsByAccountId(accountId);
 
             return res;
         }
@@ -82,16 +81,16 @@ namespace ParseBackend.Controllers.FriendService
         [Route("public/friends/{accountId}/{receiverId}")]
         public async Task<ActionResult<string>> PostFriends(string accountId, string receiverId)
         {
-            var sender = await _mongoService.FindFriendsByAccountId(accountId);
-            var receiver = await _mongoService.FindFriendsByAccountId(receiverId);
+            var sendersProfiles = await _mongoService.GetAllProfileData(accountId);
+            var receiverProfiles = await _mongoService.GetAllProfileData(receiverId);
 
-            if (sender.List.Where(x => x.Status is Enums.FriendsStatus.Incoming)
-                .FirstOrDefault(x => x.AccountId == receiver.AccountId) != null)
-                await _friendService.AcceptFriendRequest(sender.AccountId, receiver.AccountId);
+            if (sendersProfiles.FriendsData.List.Where(x => x.Status is Enums.FriendsStatus.Incoming)
+                .FirstOrDefault(x => x.AccountId == receiverProfiles.FriendsData.AccountId) != null)
+                await _friendService.AcceptFriendRequest(sendersProfiles.FriendsData.AccountId, receiverProfiles.FriendsData.AccountId);
 
-            if (sender.List.Where(x => x.Status is Enums.FriendsStatus.Outgoing)
-                .FirstOrDefault(x => x.AccountId == receiver.AccountId) is null)
-                await _friendService.SendFriendRequest(sender.AccountId, receiver.AccountId);
+            if (sendersProfiles.FriendsData.List.Where(x => x.Status is Enums.FriendsStatus.Outgoing)
+                .FirstOrDefault(x => x.AccountId == receiverProfiles.FriendsData.AccountId) is null)
+                await _friendService.SendFriendRequest(sendersProfiles.FriendsData.AccountId, receiverProfiles.FriendsData.AccountId);
 
             Response.StatusCode = 403;
             return "";
@@ -103,10 +102,10 @@ namespace ParseBackend.Controllers.FriendService
         [Route("public/friends/{accountId}/{receiverId}")]
         public async Task<ActionResult<string>> DeleteFriends(string accountId, string receiverId)
         {
-            var sender = await _mongoService.FindFriendsByAccountId(accountId);
-            var receiver = await _mongoService.FindFriendsByAccountId(receiverId);
+            var sendersProfiles = await _mongoService.GetAllProfileData(accountId);
+            var receiverProfiles = await _mongoService.GetAllProfileData(receiverId);
 
-            if (!await _friendService.DeleteFriend(sender.AccountId, receiver.AccountId))
+            if (!await _friendService.DeleteFriend(sendersProfiles.FriendsData.AccountId, receiverProfiles.FriendsData.AccountId))
             {
                 Response.StatusCode = 403;
                 return "";

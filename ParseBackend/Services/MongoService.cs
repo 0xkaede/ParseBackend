@@ -1,14 +1,11 @@
 ﻿using CUE4Parse.Utils;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
-using Newtonsoft.Json.Linq;
-using ParseBackend.Enums;
+using ParseBackend.Enums.Other;
 using ParseBackend.Exceptions;
 using ParseBackend.Exceptions.AccountService;
 using ParseBackend.Models.FortniteService.Profile;
-using ParseBackend.Models.FortniteService.Profile.Attributes;
-using ParseBackend.Models.FortniteService.Profile.Stats;
-using ParseBackend.Models.Other.CUE4Parse.Challenges;
+using ParseBackend.Models.Other.Cache;
 using ParseBackend.Models.Other.Database;
 using ParseBackend.Models.Other.Database.Athena;
 using ParseBackend.Models.Other.Database.CommonCore;
@@ -22,43 +19,18 @@ namespace ParseBackend.Services
     {
         public void Ping();
 
+        public Task<UserData> ReadUserData(string pattern, DatabaseSearchType type = DatabaseSearchType.AccountId);
+        public Task<FriendsData> ReadFriendsData(string accountId);
+        public Task<ProfileCache> GetAllProfileData(string accountId);
+        public void SaveAllProfileData(string accountId, ProfileCache profileCache);
+
         public Task<UserData> LoginAccount(string email, string password);
 
-        public Task<UserData> FindUserByAccountId(string accountId);
-        public Task<AthenaData> FindAthenaByAccountId(string accountId);
-        public Task<CommonCoreData> FindCommonCoreByAccountId(string accountId);
-        public Task<FriendsData> FindFriendsByAccountId(string accountId);
         public Task<MtxAffiliateData> FindSacByCode(string code);
 
-        public Task<UserData> FindUserByAccountName(string un);
-
-        public Task<Profile> CreateAthenaProfile(string accountId);
-        public Task<Profile> CreateCommonCoreProfile(string accountId);
         public Task<Profile> CreateCommonPublicProfile(string accountId);
 
-        public void SeenAthenaItem(ref AthenaData athenaData, string templateId, bool isSeen);
-        public void EquipAthenaItem(ref AthenaData athenaData, string itemType, string itemId, int index);
-        public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool isFavorite);
-
-        public void UpdateAthenaRvn(ref AthenaData athenaData);
-        public void UpdateAthenaQuestReRoles(ref AthenaData athenaData, int num);
-        public void UpdateAthenaNewDailyQuestsList(ref AthenaData athenaData, Dictionary<string, BaseChallenge> challengeData);
-        public void UpdateAthenaQuestLoginTime(ref AthenaData athenaData);
-        public void UpdateAthenaItemVariants(ref AthenaData athenaData, string templateId);
-        public void AddedAthenaItem(ref AthenaData athenaData, AthenaItemsData athenaItem);
-        public void AddedCommonCoreGift(ref CommonCoreData commonData, CommonCoreDataGifts item);
-        public void UpdateCommonCoreGift(string accountId, List<CommonCoreDataGifts> data);
-        public void UpdateCommonCoreVbucks(ref CommonCoreData commonCoreData);
-        public void UpdateCommonCoreRvn(ref CommonCoreData commonCoreData);
-        public void UpdateSac(ref CommonCoreData commonCoreData, string code);
-        public void UpdateAthenaQuestAssist(ref AthenaData athenaData, string quest);
-
         public Task<string> FindExchangeCode(string code);
-
-        public void UpdateFriendsStatus(string accountId, string friendId, FriendsStatus status);
-        public void AddItemToFriends(string accountId, FriendsListData data);
-        public void UpdateFriendsInList(string accountId, string friendId, FriendsListData data);
-        public void UpdateFriendsList(string accountId, List<FriendsListData> data);
     }
 
     public partial class MongoService : IMongoService
@@ -129,58 +101,79 @@ namespace ParseBackend.Services
             await CreateAccount("kaede@fort.dev", "kaede1234", "Kaede2");
         }
 
-        private FilterDefinition<AthenaData> FilterAthenaItem(string accountId, string templateId)
-            => Builders<AthenaData>.Filter.Eq(x => x.AccountId, accountId)
-            & Builders<AthenaData>.Filter.ElemMatch(x => x.Items, Builders<AthenaItemsData>.Filter.Eq(x => x.ItemIdResponse, templateId)); // so much better lad
-
-        #region DatabaseFinders
-
-        private async Task<List<UserData>> GetAllUserProfiles()
+        public async Task<UserData> ReadUserData(string pattern, DatabaseSearchType type = DatabaseSearchType.AccountId)
         {
-            var item = await _userProfiles.FindAsync(x => true);
-            return item.ToList();
+            if(type is DatabaseSearchType.AccountId)
+                if (GlobalCacheProfiles.TryGetValue(pattern, out var profile))
+                    return profile.UserData;
+
+            if (type is DatabaseSearchType.Username)
+            {
+                var data = GlobalCacheProfiles.FirstOrDefault(x => x.Value.UserData.Username == pattern).Value;
+                if(data != null)
+                    return data.UserData;
+            }
+
+            var users = type switch
+            {
+                DatabaseSearchType.AccountId => await _userProfiles.FindAsync(x => x.AccountId == pattern),
+                DatabaseSearchType.Username => await _userProfiles.FindAsync(x => x.Username == pattern)
+            };
+
+            return users.First();
         }
 
-        private async Task<List<AthenaData>> GetAllUserAthenaProfiles()
+        public async Task<FriendsData> ReadFriendsData(string accountId) //used for readonly things
         {
-            var item = await _athenaData.FindAsync(x => true);
-            return item.ToList();
+            if (GlobalCacheProfiles.TryGetValue(accountId, out var profile))
+                return profile.FriendsData;
+
+            var profiles = await _friendsData.FindAsync(x => x.AccountId == accountId);
+            return profiles.First();
         }
 
-        private async Task<List<CommonCoreData>> GetAllUserCommonCoreProfiles()
+        public async Task<ProfileCache> GetAllProfileData(string accountId)
         {
-            var item = await _commonCoreData.FindAsync(x => true);
-            return item.ToList();
-        }
+            if (GlobalCacheProfiles.TryGetValue(accountId, out var profile))
+                return profile;
 
-        public async Task<UserData> FindUserByAccountId(string accountId)
-        {
             var user = await _userProfiles.FindAsync(x => x.AccountId == accountId);
-            return user.First();
+            var athena = await _athenaData.FindAsync(x => x.AccountId == accountId);
+            var common = await _commonCoreData.FindAsync(x => x.AccountId == accountId);
+            var friend = await _friendsData.FindAsync(x => x.AccountId == accountId);
+
+            GlobalCacheProfiles.Add(accountId, new ProfileCache
+            {
+                UserData = user.First(),
+                AthenaData = athena.First(),
+                CommonData = common.First(),
+                FriendsData = friend.First(),
+            });
+
+            Logger.Log("loaded user data");
+
+            return GlobalCacheProfiles[accountId];
         }
 
-        public async Task<UserData> FindUserByAccountName(string un)
+        public void SaveAllProfileData(string accountId, ProfileCache profileCache)
         {
-            var user = await _userProfiles.FindAsync(x => x.Username == un);
-            return user.First();
-        }
+            var filter1 = Builders<UserData>.Filter.Eq(x => x.AccountId, accountId);
 
-        public async Task<AthenaData> FindAthenaByAccountId(string accountId)
-        {
-            var users = await _athenaData.FindAsync(x => x.AccountId == accountId);
-            return users.First();
-        }
+            var filter2 = Builders<AthenaData>.Filter.Eq(x => x.AccountId, accountId);
+            var update2 = Builders<AthenaData>.Update.Set(x => x, profileCache.AthenaData);
 
-        public async Task<CommonCoreData> FindCommonCoreByAccountId(string accountId)
-        {
-            var users = await _commonCoreData.FindAsync(x => x.AccountId == accountId);
-            return users.First();
-        }
+            var filter3 = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, accountId);
+            var update3 = Builders<CommonCoreData>.Update.Set(x => x, profileCache.CommonData);
 
-        public async Task<FriendsData> FindFriendsByAccountId(string accountId)
-        {
-            var user = await _friendsData.FindAsync(x => x.AccountId == accountId);
-            return user.First();
+            var filter4 = Builders<FriendsData>.Filter.Eq(x => x.AccountId, accountId);
+            var update4 = Builders<FriendsData>.Update.Set(x => x, profileCache.FriendsData);
+
+            _userProfiles.ReplaceOne(filter1, profileCache.UserData);
+            _athenaData.ReplaceOne(filter2, profileCache.AthenaData);
+            _commonCoreData.ReplaceOne(filter3, profileCache.CommonData);
+            _friendsData.ReplaceOne(filter4, profileCache.FriendsData);
+
+            Logger.Log("saved user data");
         }
 
         public async Task<MtxAffiliateData> FindSacByCode(string code)
@@ -189,13 +182,10 @@ namespace ParseBackend.Services
             return user.First();
         }
 
-        #endregion
-
-        #region DatabaseAccounts
-
         public async Task CreateAccount(string email, string password, string username)
         {
-            var users = await GetAllUserProfiles();
+            var usersTemp = await _userProfiles.FindAsync(x => x.Email == email);
+            var users = usersTemp.ToList();
 
             var usernameCheck = users.FirstOrDefault(x => x.Username == username);
             if (usernameCheck != null)
@@ -336,16 +326,16 @@ namespace ParseBackend.Services
 
         public async Task<UserData> LoginAccount(string email, string password)
         {
-            var users = await GetAllUserProfiles();
+            var check = await _userProfiles.FindAsync(x => x.Email == email);
+            var user = check.First();
 
-            var emailCheck = users.FirstOrDefault(x => x.Email == email);
-            if (email is null)
+            if (user is null)
                 throw new BaseException("", "Email wasnt found", 1008, "");
 
-            if (emailCheck.Password != password.ComputeSHA256Hash())
+            if (user.Password != password.ComputeSHA256Hash())
                 throw new BaseException("", "Password is wrong, Please try again!", 1008, "");
 
-            return emailCheck;
+            return user;
         }
 
         public async Task GrantAthenaFullLockerAsync(string accountId)
@@ -421,166 +411,6 @@ namespace ParseBackend.Services
                 return null;
             }
         }
-        #endregion
-
-        #region FortniteProfileCreate
-
-        public async Task<Profile> CreateAthenaProfile(string accountId)
-        {
-            var athenaData = await FindAthenaByAccountId(accountId);
-
-            var athena = new Profile
-            {
-                Created = athenaData.Created,
-                AccountId = accountId,
-                ProfileId = "athena",
-                Revision = athenaData.Rvn, //todo
-                WipeNumber = 0,
-                CommandRevision = athenaData.Rvn,
-                Updated = CurrentTime(),
-                Version = "no_version",
-                Items = new Dictionary<string, ProfileItem>(),
-                Stats = new ProfileStats
-                {
-                    Attributes = JObject.FromObject(new AthenaStats
-                    {
-                        AccountLevel = athenaData.Stats.AccountLevel,
-                        Level = athenaData.Stats.Level,
-                        FavoriteCharacter = athenaData.Stats.CurrentItems.CurrentSkin,
-                        FavoriteBackpack = athenaData.Stats.CurrentItems.CurrentBackbling,
-                        FavoritePickaxe = athenaData.Stats.CurrentItems.CurrentPickaxe,
-                        FavoriteDance = athenaData.Stats.CurrentItems.CurrentEmotes,
-                        FavoriteGlider = athenaData.Stats.CurrentItems.CurrentGlider,
-                        FavoriteItemWraps = athenaData.Stats.CurrentItems.CurrentWraps,
-                        FavoriteLoadingScreen = athenaData.Stats.CurrentItems.CurrentLoadingScreen,
-                        FavoriteMusicPack = athenaData.Stats.CurrentItems.CurrentMusic,
-                        FavoriteSkyDiveContrail = athenaData.Stats.CurrentItems.CurrentTrail,
-                        BookPurchased = athenaData.Stats.BattlePassPurchased,
-                        BookLevel = athenaData.Stats.BattlePassTiers,
-                        BookXp = athenaData.Stats.BattlePassStars,
-                        SeasonMatchBoost = athenaData.Stats.BattleBoost,
-                        SeasonFriendMatchBoost = athenaData.Stats.BattleBoostFriend,
-                        SeasonNum = Config.FortniteSeason,
-                        QuestManager = new QuestManager
-                        {
-                            DailyLoginInterval = DateTime.Now,
-                            DailyQuestRerolls = 0
-                        },
-                        PastSeasons = new List<Season>
-                        {
-                            new Season
-                            {
-                            }
-                        },
-                        PartyAssistQuest = athenaData.Stats.QuestAssist
-                    })
-                }
-            };
-
-            foreach(var item in athenaData.Items)
-            {
-                athena.Items.Add(item.ItemIdResponse, new ProfileItem
-                {
-                    Attributes = JObject.FromObject(new ItemAttributes
-                    {
-                        Favorite = item.IsFavorite,
-                        ItemSeen = item.Seen,
-                        Level = 0,
-                        MaxLevelBonus = 0,
-                        Variants = item.Variants,
-                        XP = 0,
-                    }),
-                    Quantity = item.Amount,
-                    TemplateId = item.ItemId
-                });
-            }
-
-            foreach (var item in athenaData.CurrentLoadOuts)
-            {
-                athena.Items.Add(item.Id, new ProfileItem
-                {
-                    Attributes = JObject.FromObject(new CosmeticLockerAttributes
-                    {
-                        LockerName = item.Name,
-                        LockerSlotsData = new LockerSlotsData
-                        { 
-                            Slots = new Dictionary<string, Slot>()
-                            {
-                                {
-                                    "Character",
-                                    new Slot
-                                    {
-                                        Items = new List<string> { athenaData.Stats.CurrentItems.CurrentSkin },
-                                        ActiveVariants = new List<object> ()
-                                    }
-                                },
-                                {
-                                    "Backpack",
-                                    new Slot
-                                    {
-                                        Items = new List<string> { athenaData.Stats.CurrentItems.CurrentBackbling },
-                                        ActiveVariants = new List<object> ()
-                                    }
-                                },
-                                {
-                                    "SkyDiveContrail",
-                                    new Slot
-                                    {
-                                        Items = new List<string> { athenaData.Stats.CurrentItems.CurrentTrail },
-                                        ActiveVariants = new List<object> ()
-                                    }
-                                },
-                                {
-                                    "LoadingScreen",
-                                    new Slot
-                                    {
-                                        Items = new List<string> { athenaData.Stats.CurrentItems.CurrentLoadingScreen },
-                                        ActiveVariants = new List<object> ()
-                                    }
-                                },
-                                {
-                                    "Pickaxe",
-                                    new Slot
-                                    {
-                                        Items = new List<string> { athenaData.Stats.CurrentItems.CurrentPickaxe },
-                                        ActiveVariants = new List<object> ()
-                                    }
-                                },
-                                {
-                                    "Glider",
-                                    new Slot
-                                    {
-                                        Items = new List<string> { athenaData.Stats.CurrentItems.CurrentGlider },
-                                        ActiveVariants = new List<object> ()
-                                    }
-                                },
-                                {
-                                    "ItemWrap",
-                                    new Slot
-                                    {
-                                        Items = athenaData.Stats.CurrentItems.CurrentWraps,
-                                        ActiveVariants = new List<object> ()
-                                    }
-                                },
-                                {
-                                    "Dance",
-                                    new Slot
-                                    {
-                                        Items = athenaData.Stats.CurrentItems.CurrentEmotes,
-                                        ActiveVariants = new List<object> ()
-                                    }
-                                },
-                            }
-                        },
-                        ItemSeen = true,
-                    })
-                });
-            }
-
-
-
-            return athena;
-        }
 
         public async Task<Profile> CreateCommonPublicProfile(string accountId)
         {
@@ -589,7 +419,7 @@ namespace ParseBackend.Services
                 Created = CurrentTime(),
                 AccountId = accountId,
                 ProfileId = "common_public",
-                Revision = 0, 
+                Revision = 0,
                 WipeNumber = 0,
                 CommandRevision = 0,
                 Updated = CurrentTime(),
@@ -600,330 +430,6 @@ namespace ParseBackend.Services
 
             return commonPublic;
         }
-
-        public async Task<Profile> CreateCommonCoreProfile(string accountId)
-        {
-            try
-            {
-                var userData = await FindUserByAccountId(accountId);
-                var commonCoreData = await FindCommonCoreByAccountId(accountId);
-
-                var commonCore = new Profile
-                {
-                    Created = commonCoreData.Created,
-                    AccountId = accountId,
-                    ProfileId = "common_core",
-                    Revision = commonCoreData.Rvn, //todo
-                    WipeNumber = 0,
-                    CommandRevision = commonCoreData.Rvn,
-                    Updated = CurrentTime(),
-                    Version = "no_version",
-                    Items = new Dictionary<string, ProfileItem>(),
-                    Stats = new ProfileStats
-                    {
-                        Attributes = JObject.FromObject(new CommonCoreStats
-                        {
-                            MtxPurchaseHistory = new MtxPurchaseHistory
-                            {
-                                RefundsUsed = 0,
-                                RefundCredits = 3,
-                                Purchases = new List<MtxPurchase>()
-                                {
-                                    
-                                }
-                            },
-                            MfaEnabled = true,
-                            MtxAffiliate = "",
-                            CurrentMtxPlatform = "EpicPC",
-                            AllowedToReceiveGifts = true,
-                            AllowedToSendGifts = true,
-                            GiftHistory = new GiftHistory(),
-                            BanStatus = new BanStatus
-                            {
-                                RequiresUserAck = userData.BannedData.Type is Enums.BannedType.MatchMaking ? true : false,
-                                BanReasons = new List<string> { userData.BannedData.Reason.GetDescription() },
-                                BanHasStarted = userData.BannedData.Type is Enums.BannedType.MatchMaking ? true : false,
-                                BanStartTime = userData.BannedData.DateBanned,
-                                BanDurationDays = userData.BannedData.Days,
-                                AdditionalInfo = "",
-                                CompetitiveBanReason = "None",
-                                ExploitProgramName = ""
-                            },
-                            MtxAffiliateId = commonCoreData.Stats.MtxAffiliate,
-                            MtxAffiliateSetTime = commonCoreData.Stats.MtxAffiliateTime
-                        })
-                    }
-                };
-
-                commonCore.Items.Add("Currency:MtxPurchased".ComputeSHA256Hash(), new ProfileItem
-                {
-                    Attributes = JObject.FromObject(new CurrencyAttributes
-                    {
-                        Platform = "EpicPC"
-                    }),
-                    Quantity = commonCoreData.Vbucks,
-                    TemplateId = "Currency:MtxPurchased"
-                });
-
-                if(commonCoreData.Gifts.Count != 0)
-                {
-                    var gifts = commonCoreData.Gifts;
-                    foreach(var gift in gifts)
-                    {
-                        var loot = new List<GiftBoxLootList>();
-
-                        foreach(var item in gift.LootList)
-                        {
-                            var variant = await _fileProviderService.GetCosmeticsVariants(item.Contains(":") ? item.Split(":")[1] : item);
-
-                            loot.Add(new GiftBoxLootList
-                            {
-                                ItemType = item,
-                                ItemGuid = item.ComputeSHA256Hash(),
-                                ItemProfile = "athena",
-                                Quantity = 1
-                            });
-                        }
-
-
-                        commonCore.Items.Add(gift.TemplateIdHashed, new ProfileItem
-                        {
-                            TemplateId = gift.TemplateId,
-                            Attributes = new GiftBoxAttribute
-                            {
-                                FromAccountId = gift.FromAccountId,
-                                GiftedOn = gift.Time.TimeToString(),
-                                Level = 1,
-                                LootList = loot,
-                                Params = new Dictionary<string, string>
-                                {
-                                    {
-                                        "userMessage",
-                                        gift.UserMessage
-                                    }
-                                }
-                            },
-                            Quantity = 1
-                        });
-                    }
-                }
-
-
-                return commonCore;
-            }
-            catch(Exception ex)
-            {
-                Logger.Log(ex.ToString());
-            }
-            return null;
-        }
-
-        #endregion
-
-        #region FortniteProfileChanges
-
-        public void SeenAthenaItem(ref AthenaData athenaData, string templateId, bool isSeen)
-        {
-            var filter = FilterAthenaItem(athenaData.AccountId, templateId);
-
-            var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().Seen, isSeen);
-            athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == templateId).Seen = isSeen;
-
-            _athenaData.UpdateOne(filter, update);
-        }
-
-        public void FavoriteAthenaItem(ref AthenaData athenaData, string templateId, bool isFavorite)
-        {
-            var filter = FilterAthenaItem(athenaData.AccountId, templateId);
-
-            var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().IsFavorite, isFavorite);
-            athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == templateId).IsFavorite = isFavorite;
-            _athenaData.UpdateOne(filter, update);
-        }
-
-        public void EquipAthenaItem(ref AthenaData athenaData, string itemType, string itemId, int index)
-        {
-            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
-
-            var update = itemType switch
-            {
-                "Character" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentSkin, itemId),
-                "Backpack" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentBackbling, itemId),
-                "Pickaxe" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentPickaxe, itemId),
-                "SkyDiveContrail" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentTrail, itemId),
-                "Glider" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentGlider, itemId),
-                "MusicPack" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentMusic, itemId),
-                "LoadingScreen" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentLoadingScreen, itemId),
-                "Dance" => Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentEmotes[index], itemId),
-                "ItemWrap" => index is -1 ? ItemWrapSupport() : Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentWraps[index], itemId),
-                _ => throw new BaseException("", $"The item type \"{itemType}\" was not found!", 1142, "")
-            };
-
-            _athenaData.UpdateOne(filter, update);
-
-            UpdateDefinition<AthenaData> ItemWrapSupport()
-            {
-                for (int i = 0; i < 7; i++)
-                {
-                    var itemWrapUpdate = Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentWraps[i], itemId);
-
-                    _athenaData.UpdateOne(filter, itemWrapUpdate);
-                }
-
-                return update = Builders<AthenaData>.Update.Set(x => x.Stats.CurrentItems.CurrentWraps[1], itemId);
-            }
-        }
-
-        private void UpdateAthena(ref AthenaData athenaData, FilterDefinition<AthenaData> filter, UpdateDefinition<AthenaData> update)
-        {
-            var filterRvn = Builders<AthenaData>.Update.Set(x => x.Rvn, athenaData.Rvn + 1);
-
-            _athenaData.UpdateOne(filter, filterRvn);
-            _athenaData.UpdateOne(filter, update);
-        }
-
-        public void UpdateAthenaRvn(ref AthenaData athenaData)
-        {
-            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
-            var update = Builders<AthenaData>.Update.Set(x => x.Rvn, athenaData.Rvn + 1);
-
-            athenaData.Rvn += 1;
-
-            _athenaData.UpdateOne(filter, update);
-        }
-
-        public void UpdateAthenaQuestReRoles(ref AthenaData athenaData, int num)
-        {
-            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
-            var update = Builders<AthenaData>.Update.Set(x => x.DailyQuestData.DailyQuestRerolls, num);
-
-            athenaData.DailyQuestData.DailyQuestRerolls = num;
-
-            _athenaData.UpdateOne(filter, update);
-        }
-
-        public void UpdateAthenaQuestLoginTime(ref AthenaData athenaData)
-        {
-            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
-            var update = Builders<AthenaData>.Update.Set(x => x.DailyQuestData.DailyLoginInterval, DateTime.Now);
-            var update2 = Builders<AthenaData>.Update.Set(x => x.DailyQuestData.DailyLoginIntervalString, CurrentTime());
-
-            athenaData.DailyQuestData.DailyLoginInterval = DateTime.Now;
-
-            _athenaData.UpdateOne(filter, update);
-            _athenaData.UpdateOne(filter, update2);
-        }
-
-        public void UpdateAthenaNewDailyQuestsList(ref AthenaData athenaData, Dictionary<string, BaseChallenge> challengeData)
-        {
-            var updateList = new List<AthenaChallengeData>();
-
-            foreach(var challenge in challengeData)
-            {
-                var data = new AthenaChallengeData
-                {
-                    ParentAsset = "",
-                    Objectives = new List<string>(),
-                    ItemId = challenge.Key
-                };
-
-                foreach(var chal in challenge.Value.Objects)
-                    data.Objectives.Add($"completion_{chal.Key}:0");
-
-                updateList.Add(data);
-            }
-
-            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
-            var update = Builders<AthenaData>.Update.Set(x => x.DailyQuestData.Quests, updateList);
-
-            athenaData.DailyQuestData.Quests = updateList;
-
-            _athenaData.UpdateOne(filter, update);
-        }
-
-        public void UpdateAthenaItemVariants(ref AthenaData athenaData, string templateId)
-        {
-            var filter = FilterAthenaItem(athenaData.AccountId, templateId);
-
-            var variant = athenaData.Items.FirstOrDefault(x => x.ItemIdResponse == templateId)!.Variants;
-
-            var update = Builders<AthenaData>.Update.Set(x => x.Items.FirstMatchingElement().Variants, variant);
-
-            _athenaData.UpdateOne(filter, update);
-        }
-
-        public void AddedAthenaItem(ref AthenaData athenaData, AthenaItemsData athenaItem)
-        {
-            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
-
-            var update = Builders<AthenaData>.Update.Push(x => x.Items, athenaItem);
-
-            _athenaData.UpdateOne(filter, update);
-        }
-
-        public void AddedCommonCoreGift(ref CommonCoreData commonData, CommonCoreDataGifts item)
-        {
-            var filter = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, commonData.AccountId);
-
-            var update = Builders<CommonCoreData>.Update.Push(x => x.Gifts, item);
-
-            _commonCoreData.UpdateOne(filter, update);
-        }
-
-        public void UpdateCommonCoreGift(string accountId, List<CommonCoreDataGifts> data) //skunky ik
-        {
-            var filter = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, accountId);
-
-            var update = Builders<CommonCoreData>.Update.Set(x => x.Gifts, data);
-
-            _commonCoreData.UpdateOne(filter, update);
-        }
-
-        public void UpdateCommonCoreVbucks(ref CommonCoreData commonCoreData)
-        {
-            var filter = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, commonCoreData.AccountId);
-            var update = Builders<CommonCoreData>.Update.Set(x => x.Vbucks, commonCoreData.Vbucks);
-
-            _commonCoreData.UpdateOne(filter, update);
-        }
-
-        public void UpdateCommonCoreRvn(ref CommonCoreData commonCoreData)
-        {
-            var filter = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, commonCoreData.AccountId);
-            var update = Builders<CommonCoreData>.Update.Set(x => x.Rvn, commonCoreData.Rvn + 1);
-
-            commonCoreData.Rvn += 1;
-
-            _commonCoreData.UpdateOne(filter, update);
-        }
-
-        public void UpdateSac(ref CommonCoreData commonCoreData, string code)
-        {
-            var filter = Builders<CommonCoreData>.Filter.Eq(x => x.AccountId, commonCoreData.AccountId);
-            var update = Builders<CommonCoreData>.Update.Set(x => x.Stats.MtxAffiliate, code);
-            var linkedTime = DateTime.Now;
-            var update2 = Builders<CommonCoreData>.Update.Set(x => x.Stats.MtxAffiliateTime, linkedTime);
-
-            commonCoreData.Stats.MtxAffiliate = code;
-            commonCoreData.Stats.MtxAffiliateTime = linkedTime;
-
-            _commonCoreData.UpdateOne(filter, update);
-            _commonCoreData.UpdateOne(filter, update2);
-        }
-
-        public void UpdateAthenaQuestAssist(ref AthenaData athenaData, string quest)
-        {
-            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, athenaData.AccountId);
-            var update = Builders<AthenaData>.Update.Set(x => x.Stats.QuestAssist, quest);
-
-            athenaData.Stats.QuestAssist = quest;
-
-            _athenaData.UpdateOne(filter, update);
-        }
-
-        #endregion
-
-        #region ExchangeCode
 
         public async Task<string> CreateExchangeCode(string accountId)
         {
@@ -949,48 +455,6 @@ namespace ParseBackend.Services
 
             return exchangeData.AccountId;
         }
-
-        #endregion
-
-        #region Friends
-        public async void AddItemToFriends(string accountId, FriendsListData data)
-        {
-            var filter = Builders<FriendsData>.Filter.Eq(x => x.AccountId, accountId);
-
-            var update = Builders<FriendsData>.Update.Push<FriendsListData>(x => x.List, data);
-
-            _friendsData.UpdateOne(filter, update);
-        }
-
-        public void UpdateFriendsStatus(string accountId, string friendId, FriendsStatus status)
-        {
-            var filter = Builders<FriendsData>.Filter.Eq(x => x.AccountId, accountId)
-            & Builders<FriendsData>.Filter.ElemMatch(x => x.List, Builders<FriendsListData>.Filter.Eq(x => x.AccountId, friendId));
-
-            var update = Builders<FriendsData>.Update.Set(x => x.List.FirstMatchingElement().Status, status);
-
-            _friendsData.UpdateOne(filter, update);
-        }
-
-        public void UpdateFriendsInList(string accountId, string friendId, FriendsListData data)
-        {
-            var filter = Builders<FriendsData>.Filter.Eq(x => x.AccountId, accountId)
-            & Builders<FriendsData>.Filter.ElemMatch(x => x.List, Builders<FriendsListData>.Filter.Eq(x => x.AccountId, friendId));
-
-            var update = Builders<FriendsData>.Update.Set(x => x.List.FirstMatchingElement(), data);
-
-            _friendsData.UpdateOne(filter, update);
-        }
-
-        public void UpdateFriendsList(string accountId, List<FriendsListData> data)
-        {
-            var filter = Builders<FriendsData>.Filter.Eq(x => x.AccountId, accountId);
-
-            var update = Builders<FriendsData>.Update.Set(x => x.List, data);
-
-            _friendsData.UpdateOne(filter, update);
-        }
-        #endregion
 
         public void UpdateSacVbucksByCode(string code, int amount)
         {

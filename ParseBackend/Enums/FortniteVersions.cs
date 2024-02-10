@@ -4,7 +4,7 @@
     {
         Version_7_40 = 7_40,
 
-        Version_8_51 = 8_511,
+        Version_8_51 = 8_51,
 
         Version_11_31 = 11_31,
 

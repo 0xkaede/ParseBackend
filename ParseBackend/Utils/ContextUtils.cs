@@ -1,7 +1,6 @@
 ﻿using Jose;
 using Newtonsoft.Json;
 using ParseBackend.Exceptions.AccountService;
-using ParseBackend.Exceptions.Common;
 
 namespace ParseBackend.Utils
 {

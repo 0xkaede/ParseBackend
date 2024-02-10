@@ -47,7 +47,7 @@ namespace ParseBackend.Xmpp
 
         public void GetPresenceFromFriends()
         {
-            var friendData = GlobalMongoService.FindFriendsByAccountId(UserData!.AccountId).Result;
+            var friendData = GlobalMongoService.ReadFriendsData(UserData!.AccountId).Result;
 
             var acceptedFriends = friendData.List.Where(x => x.Status == Enums.FriendsStatus.Accepted).ToList();
 
@@ -74,7 +74,7 @@ namespace ParseBackend.Xmpp
 
         public void GetPresenceForFriends(object Status, bool bAway, bool bClose)
         {
-            var friendData = GlobalMongoService.FindFriendsByAccountId(UserData!.AccountId).Result;
+            var friendData = GlobalMongoService.ReadFriendsData(UserData!.AccountId).Result;
 
             var acceptedFriends = friendData.List.Where(x => x.Status == Enums.FriendsStatus.Accepted).ToList();
 

@@ -28,8 +28,8 @@ namespace ParseBackend
 
             services.AddSingleton<IFileProviderService, FileProviderService>();
             services.AddSingleton<IMongoService, MongoService>();
-            services.AddSingleton<IUserService, UserService>();
             services.AddSingleton<IFriendService, FriendService>();
+            services.AddSingleton<ICahceService, CahceService>();
             //services.AddSingleton<IWebSocketService, XmppService>();
             //services.AddSingleton<IXmppService, XmppService>();
 
@@ -39,12 +39,14 @@ namespace ParseBackend
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IMongoService mongo, IFileProviderService fp)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IMongoService mongo, IFileProviderService fp, ICahceService cs)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            cs.Loop();
 
             mongo.Ping();
 
