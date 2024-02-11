@@ -13,7 +13,6 @@ public struct FArgs
     
 }
 
-[InlineArray(4)]
 public struct ColourConstantArgs
 {
     // float value[4]

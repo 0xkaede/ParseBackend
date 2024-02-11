@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -29,13 +29,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FortniteEmoteExporter\CUE4Parse-master\CUE4Parse-Conversion\CUE4Parse-Conversion.csproj" />
-    <ProjectReference Include="..\..\FortniteEmoteExporter\CUE4Parse-master\CUE4Parse\CUE4Parse.csproj" />
+    <Folder Include="Models\FortniteService\Content\" />
+    <Folder Include="Models\FortniteService\Storefront\" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\FortniteService\Content\" />
-    <Folder Include="Models\FortniteService\Storefront\" />
+    <ProjectReference Include="..\CUE4Parse\CUE4Parse-Conversion\CUE4Parse-Conversion.csproj" />
+    <ProjectReference Include="..\CUE4Parse\CUE4Parse\CUE4Parse.csproj" />
   </ItemGroup>
 
 </Project>
