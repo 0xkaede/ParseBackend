@@ -16,7 +16,8 @@ namespace ParseBackend.Utils
                 LogLevel.Info => ConsoleColor.Cyan,
                 LogLevel.Error => ConsoleColor.Red,
                 LogLevel.CUE4Parse => ConsoleColor.Magenta,
-                LogLevel.Xmpp => ConsoleColor.DarkYellow
+                LogLevel.Xmpp => ConsoleColor.DarkYellow,
+                LogLevel.Discord => ConsoleColor.Blue,
             };
 
             Console.Write(level.GetDescription());
@@ -52,5 +53,7 @@ namespace ParseBackend.Utils
         [Description("ERORR")] Error,
 
         [Description("XMPP")] Xmpp,
+
+        [Description("DISCORD")] Discord,
     }
 }

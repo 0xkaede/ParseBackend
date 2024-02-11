@@ -99,6 +99,12 @@ namespace ParseBackend.Models.Other.Database.Athena
         public void SeeItem(string itemId)
             => Items.FirstOrDefault(x => x.ItemIdResponse == itemId)!.Seen = true;
 
+        public void SeeEveryItem()
+        {
+            foreach(var item in Items)
+                item.Seen = true;
+        }
+
         public void FavoriteItem(string itemId, bool status)
             => Items.FirstOrDefault(x => x.ItemIdResponse == itemId)!.IsFavorite = status;
 
@@ -252,7 +258,7 @@ namespace ParseBackend.Models.Other.Database.Athena
                 });
             }
 
-            foreach (var quest in DailyQuestData.Quests)
+            /*foreach (var quest in DailyQuestData.Quests)
             {
                 var questAttributes = new QuestAttributes
                 {
@@ -287,7 +293,7 @@ namespace ParseBackend.Models.Other.Database.Athena
                     Attributes = questAttributes,
                     Quantity = 1
                 });
-            }
+            }*/
 
             return athena;
         }

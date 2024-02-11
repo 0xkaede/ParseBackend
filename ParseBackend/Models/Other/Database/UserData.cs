@@ -6,6 +6,9 @@ namespace ParseBackend.Models.Other.Database
     [BsonIgnoreExtraElements]
     public class UserData : BaseDatabase
     {
+        [BsonElement("discordId")]
+        public string DiscordId { get; set; }
+
         [BsonElement("email")]
         public string Email { get; set; }
 

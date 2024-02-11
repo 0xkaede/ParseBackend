@@ -10,6 +10,16 @@ namespace ParseBackend.Models.Other
         public string GamePath { get; set; }
 
         /// <summary>
+        /// Discord bot token
+        /// </summary>
+        public string DiscordBotToken {  get; set; }
+
+        /// <summary>
+        /// Allow roles to run the Admin commands in DiscordCommands\AdminCommands\
+        /// </summary>
+        public ulong[] DiscordRoleAdmins { get; set; }
+
+        /// <summary>
         /// The version you are hosting
         /// </summary>
         public FortniteVersions FortniteVersions { get; set; }

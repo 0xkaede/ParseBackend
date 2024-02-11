@@ -6,6 +6,8 @@ using System.Security.Cryptography;
 using System.Text;
 using ParseBackend.Xmpp;
 using ParseBackend.Models.Other.Cache;
+using System.Runtime.CompilerServices;
+using Discord;
 
 namespace ParseBackend
 {
@@ -15,6 +17,8 @@ namespace ParseBackend
         {
             GamePath = "C:\\Users\\jmass\\Desktop\\Fortnite 8.51\\FortniteGame\\Content\\Paks",
             FortniteVersions = FortniteVersions.Version_8_51,
+            DiscordBotToken = "MTIwNTk3ODUzNDc1NDEyMzc5Ng.Gbi_fA.DyZLlBix1xTxVX1OpylI8saP6jBodD76dJL4GA",
+            DiscordRoleAdmins = new ulong[] { 1190372901430513765 },
             WeeklyStoreFront = new List<StorefrontConfiguration>
             {
                 new StorefrontConfiguration
@@ -121,5 +125,7 @@ namespace ParseBackend
         public static bool DoesFortniteSettingsExist(string accountId) => File.Exists(GetFortniteSettingsPath(accountId));
         public static async Task<byte[]> ReadFortniteSettings(string accountId) => await File.ReadAllBytesAsync(GetFortniteSettingsPath(accountId));
         public static void SaveFortniteSettings(string accountId, string arr) => File.WriteAllText(GetFortniteSettingsPath(accountId), arr, Encoding.Latin1);
+
+        public static int ObjectToInt(this object obj) => int.Parse($"{obj}");
     }
 }

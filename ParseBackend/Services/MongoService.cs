@@ -1,10 +1,13 @@
 ﻿using CUE4Parse.Utils;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using ParseBackend.Enums;
 using ParseBackend.Enums.Other;
 using ParseBackend.Exceptions;
 using ParseBackend.Exceptions.AccountService;
 using ParseBackend.Models.FortniteService.Profile;
+using ParseBackend.Models.FortniteService.Profile.Attributes;
+using ParseBackend.Models.FortniteService.Storefront;
 using ParseBackend.Models.Other.Cache;
 using ParseBackend.Models.Other.Database;
 using ParseBackend.Models.Other.Database.Athena;
@@ -24,12 +27,17 @@ namespace ParseBackend.Services
         public Task<ProfileCache> GetAllProfileData(string accountId);
         public void SaveAllProfileData(string accountId, ProfileCache profileCache);
 
+        public Task<string> GetAccountIdFromDiscordId(string discordId);
+        public Task GrantAthenaFullLockerAsync(string accountId);
+
         public Task<UserData> LoginAccount(string email, string password);
+        public Task<CreateAccountResponse> CreateAccount(string email, string password, string username, string discordId);
 
         public Task<MtxAffiliateData> FindSacByCode(string code);
 
         public Task<Profile> CreateCommonPublicProfile(string accountId);
 
+        public Task<string> CreateExchangeCode(string accountId);
         public Task<string> FindExchangeCode(string code);
     }
 
@@ -76,29 +84,7 @@ namespace ParseBackend.Services
 
         public async Task InitDatabase()
         {
-            /*Logger.Log("Database Is Online");
-            for(int i = 0; i < 3000; i++)
-            {
-                var test = RandomString(12);
-                await CreateAccount(test, test, test);
-            }*/
-            //GrantAthenaFullLocker("78bf7fe5e26d454f902cf55c5d54f775");
-            /*var sw = new Stopwatch();
-            sw.Start();
-            await GrantAthenaFullLockerAsync("65a503ba4c7943e5a8d5281133415ed5");
-            sw.Stop();
-            Logger.Log($"Time taken {sw.Elapsed.TotalSeconds}");*/
-
-            _mxtAffiliateData.InsertOne(new MtxAffiliateData
-            {
-                AccountId = "b24912453f58465991dbd51ea1a2d6b4",
-                Code = "kaede",
-                Purchaces = 0,
-                VbuckSpent = 0,
-            });
-            await GrantAthenaFullLockerAsync("d7b0380390094695857e9da7ec29306f");
-            await CreateAccount("kaede@fn.dev", "kaede1234", "Kaede");
-            await CreateAccount("kaede@fort.dev", "kaede1234", "Kaede2");
+            
         }
 
         public async Task<UserData> ReadUserData(string pattern, DatabaseSearchType type = DatabaseSearchType.AccountId)
@@ -134,23 +120,38 @@ namespace ParseBackend.Services
 
         public async Task<ProfileCache> GetAllProfileData(string accountId)
         {
-            if (GlobalCacheProfiles.TryGetValue(accountId, out var profile))
-                return profile;
-
-            var user = await _userProfiles.FindAsync(x => x.AccountId == accountId);
-            var athena = await _athenaData.FindAsync(x => x.AccountId == accountId);
-            var common = await _commonCoreData.FindAsync(x => x.AccountId == accountId);
-            var friend = await _friendsData.FindAsync(x => x.AccountId == accountId);
-
-            GlobalCacheProfiles.Add(accountId, new ProfileCache
+            try
             {
-                UserData = user.First(),
-                AthenaData = athena.First(),
-                CommonData = common.First(),
-                FriendsData = friend.First(),
-            });
+                if (GlobalCacheProfiles.TryGetValue(accountId, out var profile))
+                {
+                    profile.LastChanges = DateTime.Now; //stop caching fucking its self
+                    return profile;
+                }
 
-            Logger.Log("loaded user data");
+                var user = await _userProfiles.FindAsync(x => x.AccountId == accountId);
+                var athena = await _athenaData.FindAsync(x => x.AccountId == accountId);
+                var common = await _commonCoreData.FindAsync(x => x.AccountId == accountId);
+                var friend = await _friendsData.FindAsync(x => x.AccountId == accountId);
+
+                var cache = new ProfileCache
+                {
+                    UserData = user.First(),
+                    AthenaData = athena.First(),
+                    CommonData = common.First(),
+                    FriendsData = friend.First(),
+                    LastChanges = DateTime.Now,
+                };
+
+                if (GlobalCacheProfiles.FirstOrDefault(x => x.Key == accountId).Value is null)
+                    GlobalCacheProfiles.Add(accountId, cache);
+
+                return GlobalCacheProfiles[accountId];
+            }
+            catch (ArgumentException ex)
+            {
+                if(ex.ToString().Contains("An item with the same key has already been added."))
+                    return GlobalCacheProfiles[accountId];
+            }
 
             return GlobalCacheProfiles[accountId];
         }
@@ -176,24 +177,34 @@ namespace ParseBackend.Services
             Logger.Log("saved user data");
         }
 
+        public async Task<string> GetAccountIdFromDiscordId(string discordId)
+        {
+            var users = await _userProfiles.FindAsync(x => x.DiscordId == discordId);
+            return users.First().AccountId;
+        }
+
         public async Task<MtxAffiliateData> FindSacByCode(string code)
         {
             var user = await _mxtAffiliateData.FindAsync(x => x.Code == code);
             return user.First();
         }
 
-        public async Task CreateAccount(string email, string password, string username)
+        public async Task<CreateAccountResponse> CreateAccount(string email, string password, string username, string discordId)
         {
-            var usersTemp = await _userProfiles.FindAsync(x => x.Email == email);
+            var usersTemp = await _userProfiles.FindAsync(x => true);
             var users = usersTemp.ToList();
+
+            var discordCheck = users.FirstOrDefault(x => x.DiscordId == discordId);
+            if (discordCheck != null)
+                return CreateAccountResponse.DiscordId;
 
             var usernameCheck = users.FirstOrDefault(x => x.Username == username);
             if (usernameCheck != null)
-                throw new UsernameTakenException();
+                return CreateAccountResponse.Username;
 
             var emailChekc = users.FirstOrDefault(x => x.Email == email);
             if (emailChekc != null)
-                throw new BaseException("", "This Email has already been taken", 108, "");
+                return CreateAccountResponse.Email;
 
             var id = CreateUuid();
             var time = CurrentTime();
@@ -201,6 +212,7 @@ namespace ParseBackend.Services
             var userData = new UserData
             {
                 AccountId = id,
+                DiscordId = discordId,
                 Created = time,
                 Email = email,
                 Password = password.ComputeSHA256Hash(),
@@ -219,7 +231,7 @@ namespace ParseBackend.Services
             {
                 AccountId = id,
                 Created = time,
-                Rvn = 0,
+                Rvn = 1,
                 Items = new List<AthenaItemsData>(),
                 Stats = new AthenaStatsData
                 {
@@ -300,7 +312,7 @@ namespace ParseBackend.Services
                 Created = time,
                 Gifts = new List<CommonCoreDataGifts>(),
                 Items = new List<CommonCoreItems>(),
-                Rvn = 0,
+                Rvn = 1,
                 Vbucks = 0,
                 Stats = new CommonCoreDataStats
                 {
@@ -322,6 +334,8 @@ namespace ParseBackend.Services
             });
 
             Logger.Log($"Account Created: {username}");
+
+            return CreateAccountResponse.Created;
         }
 
         public async Task<UserData> LoginAccount(string email, string password)
@@ -340,8 +354,21 @@ namespace ParseBackend.Services
 
         public async Task GrantAthenaFullLockerAsync(string accountId)
         {
+            var giftBoxItemId = CreateUuid();
+
             var itemsToGrant = new List<AthenaItemsData>();
             var itemsFromFile = _fileProviderService.GetAllCosmetics();
+            itemsFromFile = itemsFromFile.OrderBy(x => x).ToList();
+
+            var gb = new CommonCoreDataGifts
+            {
+                FromAccountId = CreateUuid(),
+                LootList = new List<string>(),
+                TemplateId = "GiftBox:GB_MakeGood",
+                TemplateIdHashed = giftBoxItemId,
+                Time = DateTime.Now,
+                UserMessage = "You have been granted full locker!"
+            };
 
             foreach (var item in itemsFromFile)
             {
@@ -354,6 +381,8 @@ namespace ParseBackend.Services
                     if (itemFixed == null) continue;
 
                     var variant = await _fileProviderService.GetCosmeticsVariants(item.SubstringBefore("."));
+
+                    gb.LootList.Add(itemFixed);
 
                     itemsToGrant.Add(new AthenaItemsData
                     {
@@ -372,10 +401,11 @@ namespace ParseBackend.Services
                 
             }
 
-            var filter = Builders<AthenaData>.Filter.Eq(x => x.AccountId, accountId);
-            var update = Builders<AthenaData>.Update.Set(x => x.Items, itemsToGrant);
+            var profiles = await GetAllProfileData(accountId);
 
-            _athenaData.UpdateOne(filter, update);
+            profiles.AthenaData.Items = itemsToGrant;
+
+            profiles.CommonData.Gifts.Add(gb);
 
             string FixCosmetic(string itemRaw, string toLowerItem)
             {

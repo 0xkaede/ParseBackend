@@ -29,7 +29,7 @@ namespace ParseBackend.Controllers.FortniteService.Mcp
 
         [HttpPost]
         [Route("{accountId}/client/{oparation}")]
-        public async Task<ActionResult<ProfileResponse>> McpPost([FromQuery] string profileId, string accountId, string oparation)
+        public async Task<ActionResult<ProfileResponse>> Client([FromQuery] string profileId, string accountId, string oparation)
         {
             var sw = new Stopwatch();
             sw.Start();
@@ -53,6 +53,7 @@ namespace ParseBackend.Controllers.FortniteService.Mcp
                 "SetItemFavoriteStatusBatch" => SetItemFavoriteStatusBatchAction(profiles, JsonConvert.DeserializeObject<SetItemFavoriteStatusBatchRequest>(body)!),
                 "SetPartyAssistQuest" => SetPartyAssistQuestAction(profiles, JsonConvert.DeserializeObject<JObject>(body)!),
                 "PurchaseCatalogEntry" => await PurchaseCatalogEntryAction(profiles, JsonConvert.DeserializeObject<PurchaseCatalogEntryRequest>(body)!),
+                "GiftCatalogEntry" => await GiftCatalogEntryAction(profiles, JsonConvert.DeserializeObject<GiftCatalogEntryRequest>(body)!),
                 "RemoveGiftBox" => RemoveGiftBoxAction(profiles, JsonConvert.DeserializeObject<RemoveGiftBoxResponse>(body)!),
                 _ => throw new BaseException("", $"The action \"{oparation}\" was not found!", 1142, "MCP.Epic.Error")
             };

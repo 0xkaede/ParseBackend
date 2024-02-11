@@ -40,7 +40,7 @@ namespace ParseBackend.Models.FortniteService.Profile
             return new ProfileResponse
             {
                 ProfileRevision = Revision + 1,
-                ProfileId = "athena",
+                ProfileId = ProfileId,
                 ProfileChangesBaseRevisionRevision = Revision,
                 ProfileChanges = new List<object>()
                 {

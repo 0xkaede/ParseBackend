@@ -26,6 +26,7 @@ namespace ParseBackend
                 options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
             });
 
+            services.AddSingleton<IDiscordService, DiscordService>();
             services.AddSingleton<IFileProviderService, FileProviderService>();
             services.AddSingleton<IMongoService, MongoService>();
             services.AddSingleton<IFriendService, FriendService>();
@@ -39,12 +40,14 @@ namespace ParseBackend
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IMongoService mongo, IFileProviderService fp, ICahceService cs)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IMongoService mongo, IFileProviderService fp, ICahceService cs, IDiscordService ds)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            ds.Ping();
 
             cs.Loop();
 
