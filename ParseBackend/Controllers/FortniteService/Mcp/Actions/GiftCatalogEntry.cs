@@ -12,12 +12,13 @@ using MongoDB.Driver;
 using ParseBackend.Models.FortniteService.Profile.Changes;
 using ParseBackend.Xmpp.Payloads;
 using Newtonsoft.Json;
+using ParseBackend.Models.Other.Database.CommonCore;
 
 namespace ParseBackend.Controllers.FortniteService.Mcp
 {
     public sealed partial class McpController
     {
-        public async Task<ProfileResponse> GiftCatalogEntryAction(ProfileCache profiles, GiftCatalogEntryRequest body)
+        private async Task<ProfileResponse> GiftCatalogEntryAction(ProfileCache profiles, GiftCatalogEntryRequest body)
         {
             var profileChanges = new List<object>();
             var accountId = profiles.UserData.AccountId;
@@ -123,30 +124,39 @@ namespace ParseBackend.Controllers.FortniteService.Mcp
                     });
 
                     giftBoxItem.Attributes = bad;
+                }
 
-                    if (reciverId == accountId)
+                profiles.CommonData.Gifts.Add(new CommonCoreDataGifts
+                {
+                    FromAccountId = accountId,
+                    LootList = catalog.ItemGrants.Select(x => x.TemplateId).ToList(),
+                    TemplateId = body.GiftWrapTemplateId,
+                    TemplateIdHashed = giftBoxItemId,
+                    Time = DateTime.UtcNow,
+                    UserMessage = body.PersonalMessage
+                });
+
+                if (reciverId == accountId)
+                {
+                    profileChanges.Add(new ItemAdded
                     {
-                        profileChanges.Add(new ItemAdded
-                        {
-                            Item = giftBoxItem,
-                            ItemId = giftBoxItemId,
-                        });
-                    }
+                        Item = giftBoxItem,
+                        ItemId = giftBoxItemId,
+                    });
+                }
 
+                profiles.AthenaData.Rvn += 1;
+                profiles.CommonData.Rvn += 1;
 
-                    profiles.AthenaData.Rvn += 1;
-                    profiles.CommonData.Rvn += 1;
-
-                    var client = GlobalXmppServer.FindClientFromAccountId(reciverId);
-                    if (client != null)
+                var client = GlobalXmppServer.FindClientFromAccountId(reciverId);
+                if (client != null)
+                {
+                    client.SendMessage(JsonConvert.SerializeObject(new PayLoad<object>
                     {
-                        client.SendMessage(JsonConvert.SerializeObject(new PayLoad<object>
-                        {
-                            Payload = new object(),
-                            Timestamp = CurrentTime(),
-                            Type = "com.epicgames.gift.received"
-                        }));
-                    }
+                        Payload = new object(),
+                        Timestamp = CurrentTime(),
+                        Type = "com.epicgames.gift.received"
+                    }));
                 }
             }
 

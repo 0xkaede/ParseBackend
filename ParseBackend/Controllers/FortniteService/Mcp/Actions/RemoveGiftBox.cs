@@ -7,7 +7,7 @@ namespace ParseBackend.Controllers.FortniteService.Mcp
 {
     public sealed partial class McpController
     {
-        public ProfileResponse RemoveGiftBoxAction(ProfileCache profiles, RemoveGiftBoxResponse body)
+        private ProfileResponse RemoveGiftBoxAction(ProfileCache profiles, RemoveGiftBoxResponse body)
         {
             var profileChanges = new List<object>();
 
